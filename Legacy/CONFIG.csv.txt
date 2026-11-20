@@ -1,0 +1,53 @@
+﻿SERVER_1,10.20.10.252
+SERVER_2,10.20.10.253
+SERVER_3,172.26.220.153
+SERVER_4,172.26.220.152
+SERVER_5,172.26.220.59
+SERVER_6,192.168.10.5
+SERVER_7,172.26.220.154
+SERVER_8,10.20.10.251
+SERVER_1_NAME,APCSDBSERVER_1
+SERVER_2_NAME,APCSDBSERVER_2
+SERVER_3_NAME,RAIS
+SERVER_4_NAME,MSOP8H_SERVER
+SERVER_5_NAME,HTSSOPB24_SERVER
+SERVER_6_NAME,ALPS
+SERVER_7_NAME,RAIS_SERVER
+SERVER_8_NAME,WAFERMAPPING_SERVER
+
+PS C:\Users\Administrator> Get-CimInstance Win32_ComputerSystem | Select DNSHostName, Domain, PartOfDomain | Format-List
+
+
+
+DNSHostName  : APCSPRO-SERVER-DB
+Domain       : WORKGROUP
+PartOfDomain : False
+
+
+
+PS C:\Users\Administrator> Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled = True" | Select Descrip
+tion, IPAddress | Format-List
+
+
+Description : vmxnet3 Ethernet Adapter
+IPAddress   : {172.26.220.59}
+
+Description : Intel(R) 82574L Gigabit Network Connection
+IPAddress   : {10.27.35.73}
+
+
+
+PS C:\Users\Administrator> Get-CimInstance Win32_PerfFormattedData_Tcpip_NetworkInterface | Select -ExpandProperty Name
+Intel[R] 82574L Gigabit Network Connection
+isatap.{91519E3C-A226-4BB0-99B0-CD4983A8B928}
+isatap.{CAD05563-FE38-41E5-B868-BC81FEB1C7F7}
+Teredo Tunneling Pseudo-Interface
+vmxnet3 Ethernet Adapter
+PS C:\Users\Administrator> Get-Service WinRM | Select Name, Status
+
+Name   Status
+----   ------
+WinRM Running
+
+
+PS C:\Users\Administrator>

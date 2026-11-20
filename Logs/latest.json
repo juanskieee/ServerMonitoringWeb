@@ -1,0 +1,102 @@
+{
+  "srv09": {
+    "ServerId": "srv09",
+    "ServerName": "RAIS_SERVER_INTRANET",
+    "IpAddress": "10.27.1.192",
+    "ConfigurationRevision": "6F34330F03D7C472809D3DC07EBB81EE7B4AAF57CF0A42387FEA8C84D96743A9",
+    "IsOnline": true,
+    "CpuPercent": null,
+    "RamPercent": null,
+    "Disks": [],
+    "ResponseTimeMs": 2,
+    "LastPingUtc": "2026-11-20T00:55:02.1341365+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-20T00:55:02.1341365+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 2
+      },
+      {
+        "CheckedUtc": "2026-11-20T00:55:01.1396026+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 2
+      }
+    ],
+    "CollectionWarning": "Access denied. Check account permissions. (0x80070005)",
+    "Status": "Online"
+  },
+  "srv04": {
+    "ServerId": "srv04",
+    "ServerName": "APCSPRO_SERVER",
+    "IpAddress": "10.27.35.222",
+    "ConfigurationRevision": "47035400C90EA7DAD4675A2D76F7C91CA534C91EB62CFF2E817D08461927DAFA",
+    "IsOnline": true,
+    "CpuPercent": 59,
+    "RamPercent": 65.408080184792,
+    "Disks": [
+      {
+        "Name": "C:",
+        "FreeGb": 1012.657168384,
+        "SizeGb": 1098.917081088
+      },
+      {
+        "Name": "E:",
+        "FreeGb": 4722.309763072,
+        "SizeGb": 8795.956703232
+      }
+    ],
+    "ResponseTimeMs": 3,
+    "LastPingUtc": "2026-11-20T00:55:01.7895606+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-20T00:55:01.7895606+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 3
+      },
+      {
+        "CheckedUtc": "2026-11-20T00:55:00.7919062+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 2
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Online"
+  },
+  "srv05": {
+    "ServerId": "srv05",
+    "ServerName": "VARIOUS_APP_SERVER",
+    "IpAddress": "10.27.35.73",
+    "ConfigurationRevision": "1443826EC21305FA6B65EB346806113B9242911B4436275D49A68E4A2E85E845",
+    "IsOnline": true,
+    "CpuPercent": 11,
+    "RamPercent": 40.12390303886729,
+    "Disks": [
+      {
+        "Name": "C:",
+        "FreeGb": 814.848704512,
+        "SizeGb": 1098.916032512
+      },
+      {
+        "Name": "E:",
+        "FreeGb": 6043.289141248,
+        "SizeGb": 9895.468331008
+      }
+    ],
+    "ResponseTimeMs": 2,
+    "LastPingUtc": "2026-11-20T00:55:01.7894261+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-20T00:55:01.7894261+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 2
+      },
+      {
+        "CheckedUtc": "2026-11-20T00:55:00.7913888+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 2
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Online"
+  }
+}

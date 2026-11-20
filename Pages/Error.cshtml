@@ -1,0 +1,15 @@
+﻿@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<section class="error-page">
+    <h1>Dashboard unavailable</h1>
+    <p>The dashboard could not load. Try refreshing the page. If the problem continues, share the request ID with your administrator.</p>
+    @if (Model.ShowRequestId)
+    {
+        <p><strong>Request ID:</strong> <code>@Model.RequestId</code></p>
+    }
+    <a asp-page="/Index">Return to server status</a>
+</section>

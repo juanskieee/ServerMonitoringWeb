@@ -1,0 +1,241 @@
+@model IndexModel
+
+<div data-card-response>
+    <div data-notices>
+        @if (!Model.Configuration.IsValid)
+        {
+            <section class="notice notice-error" aria-labelledby="configuration-heading">
+                <h2 id="configuration-heading">Check server configuration</h2>
+                <ul>
+                    @foreach (var error in Model.Configuration.Errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </section>
+        }
+
+        @if (Model.StorageError is { } storageError)
+        {
+            <section class="notice notice-error"
+                     aria-label="Monitoring results unavailable">
+                <p>@storageError</p>
+            </section>
+        }
+    </div>
+
+    <section class="server-grid" aria-label="Servers">
+        @foreach (var card in Model.Cards)
+        {
+            var server = card.Definition;
+            var snapshot = card.Snapshot;
+            var emptyStateMessage = card.EmptyStateMessage;
+            var showPingLog = card.ShowReadings || card.HasAlert;
+
+            var responseTimeMs =
+                card.ShowReadings
+                    ? snapshot.ResponseTimeMs
+                    : null;
+
+            <article class="server-card card-@card.StateClass"
+                     data-server-id="@server.Id"
+                     aria-labelledby="name-@server.Id">
+
+                <header class="card-heading"
+                        data-card-heading>
+
+                    <div class="server-identity">
+                        <h2 id="name-@server.Id">
+                            @(string.IsNullOrWhiteSpace(server.Name)
+                                ? server.Id
+                                : server.Name)
+                        </h2>
+
+                        <p class="ip-addresses">
+                            <span class="visually-hidden">
+                                IP Addresses:
+                            </span>
+
+                            @(server.IpAddresses.Length == 0
+                                ? "N/A"
+                                : string.Join(" | ", server.IpAddresses))
+                        </p>
+                    </div>
+
+                    <div class="server-header-status">
+
+                        @if (responseTimeMs is not null || card.HasAlert)
+                        {
+                            <span class="ping-badge ping-badge-@card.StateClass"
+                                  aria-label="@(responseTimeMs is null ? $"Ping unavailable ({card.State})" : $"Ping: {IndexModel.Value(responseTimeMs, "F0")} ms")">
+                                @IndexModel.Value(responseTimeMs, "F0")
+                                @if (responseTimeMs is not null)
+                                {
+                                    <small>ms</small>
+                                }
+
+                                <svg class="ping-icon"
+                                     viewBox="0 0 24 24"
+                                     aria-hidden="true">
+                                    <path fill="currentColor"
+                                          d="M3 17h3v4H3v-4zm5-4h3v8H8v-8zm5-4h3v12h-3V9zm5-4h3v16h-3V5z" />
+                                    @if (responseTimeMs is null)
+                                    {
+                                        <path d="M3 3 21 21" fill="none" stroke="var(--error-background, var(--surface))" stroke-width="5" stroke-linecap="round" />
+                                        <path d="M3 3 21 21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                    }
+                                </svg>
+                            </span>
+                        }
+
+                        <span class="status status-@card.StateClass">
+                            @card.State
+                        </span>
+
+                    </div>
+
+                </header>
+
+                @if (emptyStateMessage is not null)
+                {
+                    <div class="card-empty-state @(showPingLog ? "card-empty-state-with-log" : "") @(card.HasAlert ? "card-empty-state-error" : "")">
+                        <svg class="card-empty-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.75"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            focusable="false">
+                            @if (!server.Enabled)
+                            {
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M10 8v8M14 8v8" />
+                            }
+                            else if (card.HasAlert)
+                            {
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="m9 9 6 6m0-6-6 6" />
+                            }
+                            else
+                            {
+                                <path d="m2 2 20 20M8.5 16.5a5 5 0 0 1 7 0M2 8.82a15 15 0 0 1 4.17-2.65M10.66 5.06A16 16 0 0 1 22 8.82M5 12.86a10 10 0 0 1 5.17-2.69M16.5 11.5a10 10 0 0 1 2.5 1.36" />
+                                <circle cx="12" cy="20" r="1" fill="currentColor" stroke="none" />
+                            }
+                        </svg>
+
+                        <p>@emptyStateMessage</p>
+                    </div>
+                }
+                else
+                {
+                    @await Html.PartialAsync("_UsageDonut", card)
+                }
+
+                @if (showPingLog)
+                {
+                    <div class="card-information"
+                         data-card-information>
+
+                        @if (emptyStateMessage is null)
+                        {
+                            <section class="disk-usage"
+                                     aria-label="Disk usage">
+
+                                @if (snapshot.Disks.Count == 0)
+                                {
+                                    <p class="disk-unavailable">Drive information unavailable</p>
+                                }
+
+                                @foreach (var disk in snapshot.Disks)
+                                {
+                                    var usedPercent = disk.UsedPercent;
+
+                                    <div class="drive-usage">
+
+                                        <div class="drive-heading">
+                                            <h3>Disk @disk.Name</h3>
+
+                                            <strong>
+                                                @IndexModel.Value(
+                                                    usedPercent,
+                                                    "F1")
+
+                                                @if (usedPercent is not null)
+                                                {
+                                                    <small>%</small>
+                                                }
+                                            </strong>
+                                        </div>
+
+                                        @if (usedPercent is not null)
+                                        {
+                                            <meter
+                                                class="disk-bar"
+                                                min="0"
+                                                max="100"
+                                                value="@IndexModel.Value(usedPercent, "0.###")"
+                                                aria-label="@($"Disk {disk.Name} used")">
+
+                                                @IndexModel.Value(usedPercent, "F1")%
+                                            </meter>
+                                        }
+                                        else
+                                        {
+                                            <div class="disk-bar"
+                                                 aria-hidden="true"></div>
+                                        }
+
+                                        <p class="disk-capacity">
+                                            @if (usedPercent is not null)
+                                            {
+                                                @IndexModel.Value(disk.UsedGb, "F1")
+                                                <text>/ @IndexModel.Value(disk.SizeGb, "F1") GB used</text>
+                                            }
+                                            else
+                                            {
+                                                <text>Capacity unavailable</text>
+                                            }
+                                        </p>
+                                    </div>
+                                }
+
+                            </section>
+                        }
+
+                        <section class="ping-log-section" aria-label="Ping log">
+                            <ol class="ping-log" aria-label="Current pair of ping checks, newest first">
+                                @for (var row = 0; row < 2; row++)
+                                {
+                                    var entry = snapshot.PingLog.ElementAtOrDefault(row);
+                                    if (entry is not null)
+                                    {
+                                        <li>
+                                            <time datetime="@entry.CheckedUtc.ToString("O")"
+                                                  title="@entry.CheckedUtc.ToOffset(TimeSpan.FromHours(8)).ToString("yyyy-MM-dd HH:mm:ss")">
+                                                @entry.CheckedUtc.ToOffset(TimeSpan.FromHours(8)).ToString("MMM dd, yyyy hh:mm:ss tt")
+                                            </time>
+                                            <span class="ping-log-@(entry.IsOnline ? "reply" : "failure")">@(entry.IsOnline ? "Connected" : "Not connected")</span>
+                                            <strong>@IndexModel.Value(entry.ResponseTimeMs, "F0")@if (entry.ResponseTimeMs is not null){<small> ms</small>}</strong>
+                                        </li>
+                                    }
+                                    else
+                                    {
+                                        <li class="ping-log-empty">
+                                            <span aria-hidden="true">&mdash;</span>
+                                            <span>@(row == 0 ? "Waiting for ping" : "N/A")</span>
+                                            <span>N/A</span>
+                                        </li>
+                                    }
+                                }
+                            </ol>
+                        </section>
+
+                    </div>
+                }
+
+            </article>
+        }
+    </section>
+</div>

@@ -1,0 +1,36 @@
+@model ServerCard
+@{
+    var gauges = new[]
+    {
+        new UsageGauge("CPU usage", Model.Snapshot.CpuPercent, "cpu", 68),
+        new UsageGauge("RAM usage", Model.Snapshot.RamPercent, "ram", 53),
+        new UsageGauge("DISK usage", Model.Snapshot.DiskUsedPercent, "disk", 38)
+    };
+}
+<figure class="resource-donut" aria-label="CPU, RAM and combined drive usage">
+    <figcaption class="metric-legend">
+        @foreach (var gauge in gauges)
+        {
+            <div>
+                <strong data-metric-value="@gauge.Tone">@gauge.Number@if (gauge.Percent is not null){<small>%</small>}</strong>
+                <span class="legend-label">@gauge.Label</span>
+            </div>
+        }
+    </figcaption>
+    <svg class="usage-rings" viewBox="0 0 160 160" aria-hidden="true" focusable="false">
+        @foreach (var gauge in gauges)
+        {
+            <g class="@(gauge.Percent is null ? "gauge-unavailable" : "")" data-metric="@gauge.Tone">
+                <circle class="donut-track" cx="80" cy="80" r="@gauge.Radius" pathLength="100" />
+                <circle class="donut-fill" cx="80" cy="80" r="@gauge.Radius" pathLength="100" transform="rotate(-90 80 80)"
+                        style="stroke-dashoffset:@gauge.Offset;opacity:@(gauge.Percent is > 0 ? "1" : "0")" />
+            </g>
+        }
+        <text class="donut-center" x="80" y="84" text-anchor="middle">%</text>
+    </svg>
+    <svg class="donut-guides" aria-hidden="true" focusable="false">
+        <path data-guide="cpu" d="M 0 0" />
+        <path data-guide="ram" d="M 0 0" />
+        <path data-guide="disk" d="M 0 0" />
+    </svg>
+</figure>

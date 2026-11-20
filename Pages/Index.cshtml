@@ -1,0 +1,39 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "LSD Server Monitoring System";
+}
+
+<header class="dashboard-header">
+<h1 class="dashboard-title">
+    <span class="title-icon" aria-hidden="true">
+        <svg viewBox="0 0 16 16">
+            <path fill="currentColor"
+                  d="M1 2.5A1.5 1.5 0 0 1 2.5 1h11A1.5 1.5 0 0 1 15 2.5v7A1.5 1.5 0 0 1 13.5 11H9v1h1a1 1 0 0 1 1 1v1H5v-1a1 1 0 0 1 1-1h1v-1H2.5A1.5 1.5 0 0 1 1 9.5zm1.5-.5a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5z"/>
+        </svg>
+    </span>
+    <span class="title-text">LSD SERVER MONITORING SYSTEM</span>
+</h1>
+    <div class="dashboard-settings">
+        <label class="theme-setting" for="theme-select">
+            <span>Theme</span>
+            <select id="theme-select" disabled>
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </label>
+    </div>
+</header>
+
+<audio id="server-warning-sound" src="~/audio/server-warning.wav" preload="auto" loop></audio>
+
+<div id="dashboard-content" data-refresh-url="@Url.Page("/Index", "Cards")">
+    @await Html.PartialAsync("_ServerCards", Model)
+</div>
+
+<p id="refresh-state" class="refresh-state" role="status" hidden></p>
+<noscript><p class="notice">Automatic refresh requires JavaScript. Reload the page for new readings.</p></noscript>
+
+@section Scripts {
+    <script src="~/js/dashboard.js" asp-append-version="true" defer></script>
+}
