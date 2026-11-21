@@ -10,3 +10,4 @@ artifacts/
 credentials.dat
 /servers.json
 collector.lock
+logs/

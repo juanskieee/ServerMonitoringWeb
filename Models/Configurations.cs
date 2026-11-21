@@ -20,7 +20,7 @@ public sealed class MonitoringOptions
 
     // Interval between CPU, RAM, and disk checks.
     [Range(1, 3600)]
-    public int DetailsIntervalSeconds { get; set; } = 5;
+    public int DetailsIntervalSeconds { get; set; } = 1;
 
     // Maximum wait for each IP's ping reply.
     [Range(1, 60000)]

@@ -3,26 +3,37 @@
     "ServerId": "srv09",
     "ServerName": "RAIS_SERVER_INTRANET",
     "IpAddress": "10.27.1.192",
-    "ConfigurationRevision": "6F34330F03D7C472809D3DC07EBB81EE7B4AAF57CF0A42387FEA8C84D96743A9",
+    "ConfigurationRevision": "4B8DFBD57131D6BA414E56A3CE5702C13BC4051DA66512AB5CCFD67344A69F85",
     "IsOnline": true,
-    "CpuPercent": null,
-    "RamPercent": null,
-    "Disks": [],
-    "ResponseTimeMs": 2,
-    "LastPingUtc": "2026-11-20T00:55:02.1341365+00:00",
-    "PingLog": [
+    "CpuPercent": 2,
+    "RamPercent": 29.580234829813396,
+    "Disks": [
       {
-        "CheckedUtc": "2026-11-20T00:55:02.1341365+00:00",
-        "IsOnline": true,
-        "ResponseTimeMs": 2
+        "Name": "C:",
+        "FreeGb": 28.35515392,
+        "SizeGb": 548.968329216
       },
       {
-        "CheckedUtc": "2026-11-20T00:55:01.1396026+00:00",
-        "IsOnline": true,
-        "ResponseTimeMs": 2
+        "Name": "E:",
+        "FreeGb": 499.770892288,
+        "SizeGb": 1099.492749312
       }
     ],
-    "CollectionWarning": "Access denied. Check account permissions. (0x80070005)",
+    "ResponseTimeMs": 1,
+    "LastPingUtc": "2026-11-21T00:30:18.3500227+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-21T00:30:18.3500227+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 1
+      },
+      {
+        "CheckedUtc": "2026-11-21T00:30:16.3621582+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 22
+      }
+    ],
+    "CollectionWarning": null,
     "Status": "Online"
   },
   "srv04": {
@@ -31,32 +42,32 @@
     "IpAddress": "10.27.35.222",
     "ConfigurationRevision": "47035400C90EA7DAD4675A2D76F7C91CA534C91EB62CFF2E817D08461927DAFA",
     "IsOnline": true,
-    "CpuPercent": 59,
-    "RamPercent": 65.408080184792,
+    "CpuPercent": 47,
+    "RamPercent": 65.25676068369627,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 1012.657168384,
+        "FreeGb": 1012.619911168,
         "SizeGb": 1098.917081088
       },
       {
         "Name": "E:",
-        "FreeGb": 4722.309763072,
+        "FreeGb": 4721.538875392,
         "SizeGb": 8795.956703232
       }
     ],
-    "ResponseTimeMs": 3,
-    "LastPingUtc": "2026-11-20T00:55:01.7895606+00:00",
+    "ResponseTimeMs": 22,
+    "LastPingUtc": "2026-11-21T00:30:17.3317719+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-20T00:55:01.7895606+00:00",
+        "CheckedUtc": "2026-11-21T00:30:17.3317719+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 3
+        "ResponseTimeMs": 22
       },
       {
-        "CheckedUtc": "2026-11-20T00:55:00.7919062+00:00",
+        "CheckedUtc": "2026-11-21T00:30:15.3275813+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 2
+        "ResponseTimeMs": 1
       }
     ],
     "CollectionWarning": null,
@@ -68,32 +79,200 @@
     "IpAddress": "10.27.35.73",
     "ConfigurationRevision": "1443826EC21305FA6B65EB346806113B9242911B4436275D49A68E4A2E85E845",
     "IsOnline": true,
-    "CpuPercent": 11,
-    "RamPercent": 40.12390303886729,
+    "CpuPercent": 3,
+    "RamPercent": 44.65910419923161,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 814.848704512,
+        "FreeGb": 814.847258624,
         "SizeGb": 1098.916032512
       },
       {
         "Name": "E:",
-        "FreeGb": 6043.289141248,
+        "FreeGb": 6042.000494592,
         "SizeGb": 9895.468331008
       }
     ],
-    "ResponseTimeMs": 2,
-    "LastPingUtc": "2026-11-20T00:55:01.7894261+00:00",
+    "ResponseTimeMs": 3,
+    "LastPingUtc": "2026-11-21T00:30:17.3325324+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-20T00:55:01.7894261+00:00",
+        "CheckedUtc": "2026-11-21T00:30:17.3325324+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 3
+      },
+      {
+        "CheckedUtc": "2026-11-21T00:30:15.3279584+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 1
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Online"
+  },
+  "srv03": {
+    "ServerId": "srv03",
+    "ServerName": "RAIS_SERVER_MACHINE",
+    "IpAddress": "",
+    "ConfigurationRevision": "9C8409A82234657854C0A7754B7F7F6AD5BF14EB6459A2D541F6321155F2A814",
+    "IsOnline": false,
+    "CpuPercent": null,
+    "RamPercent": null,
+    "Disks": [],
+    "ResponseTimeMs": null,
+    "LastPingUtc": "2026-11-20T11:54:09.9696773+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-20T11:54:09.9696773+00:00",
+        "IsOnline": false,
+        "ResponseTimeMs": null
+      },
+      {
+        "CheckedUtc": "2026-11-20T11:54:07.9672529+00:00",
+        "IsOnline": false,
+        "ResponseTimeMs": null
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Offline"
+  },
+  "srv07": {
+    "ServerId": "srv07",
+    "ServerName": "RAIS_DATABASE_MACHINE",
+    "IpAddress": "",
+    "ConfigurationRevision": "4CC0B1C52FBB717EC50BA89DC06DB6A6CC5E8963DC20168A80916A428A13B1EF",
+    "IsOnline": false,
+    "CpuPercent": null,
+    "RamPercent": null,
+    "Disks": [],
+    "ResponseTimeMs": null,
+    "LastPingUtc": "2026-11-20T11:54:09.9703673+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-20T11:54:09.9703673+00:00",
+        "IsOnline": false,
+        "ResponseTimeMs": null
+      },
+      {
+        "CheckedUtc": "2026-11-20T11:54:07.9680134+00:00",
+        "IsOnline": false,
+        "ResponseTimeMs": null
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Offline"
+  },
+  "srv02": {
+    "ServerId": "srv02",
+    "ServerName": "APCSDBSERVER_2",
+    "IpAddress": "10.27.32.233",
+    "ConfigurationRevision": "329085ACF27D16AFE885FDC08E3F5E4C0EF89F5A8D05A93C7DFED6358371DE00",
+    "IsOnline": true,
+    "CpuPercent": 19,
+    "RamPercent": 59.625912761170554,
+    "Disks": [
+      {
+        "Name": "C:",
+        "FreeGb": 33.578622976,
+        "SizeGb": 107.005079552
+      },
+      {
+        "Name": "E:",
+        "FreeGb": 3385.414496256,
+        "SizeGb": 4397.910192128
+      }
+    ],
+    "ResponseTimeMs": 2,
+    "LastPingUtc": "2026-11-21T00:30:19.3250869+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-21T00:30:19.3250869+00:00",
         "IsOnline": true,
         "ResponseTimeMs": 2
       },
       {
-        "CheckedUtc": "2026-11-20T00:55:00.7913888+00:00",
+        "CheckedUtc": "2026-11-21T00:30:17.3317343+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 2
+        "ResponseTimeMs": 21
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Online"
+  },
+  "srv01": {
+    "ServerId": "srv01",
+    "ServerName": "APCSDBSERVER_1",
+    "IpAddress": "10.27.32.239",
+    "ConfigurationRevision": "DE78E70428AFC0BB10E9234501055F7F2BC491A49C934F7B78F4DB36B90CDF1A",
+    "IsOnline": true,
+    "CpuPercent": 2,
+    "RamPercent": 55.03322924194321,
+    "Disks": [
+      {
+        "Name": "C:",
+        "FreeGb": 79.871782912,
+        "SizeGb": 321.752395776
+      },
+      {
+        "Name": "E:",
+        "FreeGb": 1048.418390016,
+        "SizeGb": 2199.020105728
+      }
+    ],
+    "ResponseTimeMs": 21,
+    "LastPingUtc": "2026-11-21T00:30:17.3317343+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-21T00:30:17.3317343+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 21
+      },
+      {
+        "CheckedUtc": "2026-11-21T00:30:15.3271571+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 1
+      }
+    ],
+    "CollectionWarning": null,
+    "Status": "Online"
+  },
+  "srv06": {
+    "ServerId": "srv06",
+    "ServerName": "ALPS_SERVER",
+    "IpAddress": "10.27.32.155",
+    "ConfigurationRevision": "2A799ECD3D77BD7FC584896877D76DAD036139CE1B7DBB06655F8BBF15BE62D4",
+    "IsOnline": true,
+    "CpuPercent": 2,
+    "RamPercent": 9.497622810717273,
+    "Disks": [
+      {
+        "Name": "C:",
+        "FreeGb": 300.071755776,
+        "SizeGb": 321.753444352
+      },
+      {
+        "Name": "E:",
+        "FreeGb": 1086.32047616,
+        "SizeGb": 1099.508416512
+      },
+      {
+        "Name": "F:",
+        "FreeGb": 0,
+        "SizeGb": 0.04044288
+      }
+    ],
+    "ResponseTimeMs": 1,
+    "LastPingUtc": "2026-11-21T00:30:18.3268088+00:00",
+    "PingLog": [
+      {
+        "CheckedUtc": "2026-11-21T00:30:18.3268088+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 1
+      },
+      {
+        "CheckedUtc": "2026-11-21T00:30:16.3260964+00:00",
+        "IsOnline": true,
+        "ResponseTimeMs": 3
       }
     ],
     "CollectionWarning": null,

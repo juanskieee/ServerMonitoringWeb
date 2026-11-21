@@ -4,7 +4,7 @@
     {
         new UsageGauge("CPU usage", Model.Snapshot.CpuPercent, "cpu", 68),
         new UsageGauge("RAM usage", Model.Snapshot.RamPercent, "ram", 53),
-        new UsageGauge("DISK usage", Model.Snapshot.DiskUsedPercent, "disk", 38)
+        new UsageGauge("DISK used", Model.Snapshot.DiskUsedPercent, "disk", 38)
     };
 }
 <figure class="resource-donut" aria-label="CPU, RAM and combined drive usage">
@@ -29,6 +29,20 @@
         <text class="donut-center" x="80" y="84" text-anchor="middle">%</text>
     </svg>
     <svg class="donut-guides" aria-hidden="true" focusable="false">
+        <defs>
+            <marker id="guide-tip"
+                    markerWidth="4"
+                    markerHeight="4"
+                    refX="2"
+                    refY="2"
+                    orient="auto">
+                <circle cx="2"
+                        cy="2"
+                        r="1.5"
+                        fill="currentColor" />
+            </marker>
+        </defs>
+
         <path data-guide="cpu" d="M 0 0" />
         <path data-guide="ram" d="M 0 0" />
         <path data-guide="disk" d="M 0 0" />

@@ -86,6 +86,11 @@ internal static class WmiCollector
         ManagementScope scope,
         CollectionMetrics metrics)
     {
+        // PowerShell equivalent:
+        // Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor |
+        //     Where-Object Name -eq "_Total" |
+        //     Select-Object Name, PercentProcessorTime
+
         const string formattedCpuQuery =
             "SELECT PercentProcessorTime " +
             "FROM Win32_PerfFormattedData_PerfOS_Processor " +
@@ -168,6 +173,10 @@ internal static class WmiCollector
         ManagementScope scope,
         CollectionMetrics metrics)
     {
+        // PowerShell equivalent:
+        // Get-CimInstance Win32_OperatingSystem |
+        //     Select-Object TotalVisibleMemorySize, FreePhysicalMemory
+
         const string query =
             "SELECT TotalVisibleMemorySize, FreePhysicalMemory " +
             "FROM Win32_OperatingSystem";
@@ -202,6 +211,11 @@ internal static class WmiCollector
         ManagementScope scope,
         CollectionMetrics metrics)
     {
+        // PowerShell equivalent:
+        // Get-CimInstance Win32_LogicalDisk |
+        //     Where-Object DriveType -eq 3 |
+        //     Select-Object DeviceID, FreeSpace, Size
+
         const string query =
             "SELECT DeviceID, FreeSpace, Size " +
             "FROM Win32_LogicalDisk " +

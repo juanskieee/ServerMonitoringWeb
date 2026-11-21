@@ -59,11 +59,14 @@ public sealed record ServerSnapshot
     {
         get
         {
-            var disks = Disks.Where(disk => disk.UsedGb is not null).ToArray();
-            var sizeGb = disks.Sum(disk => disk.SizeGb);
+            var percentages =
+                Disks
+                    .Where(d => d.UsedPercent.HasValue)
+                    .Select(d => d.UsedPercent!.Value)
+                    .ToArray();
 
-            return sizeGb is > 0
-                ? 100 * disks.Sum(disk => disk.UsedGb) / sizeGb
+            return percentages.Length > 0
+                ? percentages.Average()
                 : null;
         }
     }

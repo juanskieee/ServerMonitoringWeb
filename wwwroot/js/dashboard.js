@@ -182,6 +182,14 @@
         `M${lineStartX} ${lineStartY} H${lineElbowX} V${lineY} H${lineEndX}`;
 
       guidePath.setAttribute("d", guidePathData);
+      const guideTip = donutFigure.querySelector(
+        `[data-guide-tip="${metricName}"]`
+      );
+
+      if (guideTip) {
+        guideTip.setAttribute("cx", lineEndX);
+        guideTip.setAttribute("cy", lineY);
+      }
     }
   }
 
