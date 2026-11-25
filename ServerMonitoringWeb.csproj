@@ -4,13 +4,13 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<DefaultItemExcludes>$(DefaultItemExcludes);Legacy/**;artifacts/**</DefaultItemExcludes>
+		<DefaultItemExcludes>$(DefaultItemExcludes);Legacy/**;artifacts/**;Logs/**;logs/**</DefaultItemExcludes>
 		<ApplicationIcon>wwwroot\LSDMonitoring.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="System.Management" Version="8.0.0" />
-		<Content Update="servers.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+		<Content Update="servers.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 
 	<ItemGroup>

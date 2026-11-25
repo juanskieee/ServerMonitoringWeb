@@ -33,7 +33,7 @@ Open the address reported by the application. Closing the browser does not stop 
 
 ## Deployment and data
 
-Publish the application in Release mode using the approved deployment procedure. Configure IIS for continuous operation and do not enable desktop mode in IIS. Ensure only one running instance uses the same data directory.
+Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Configure a dedicated IIS application pool for continuous operation; do not enable desktop mode in IIS or run a standalone EXE alongside IIS against the same data directory.
 
 Preserve the deployed `servers.json` and existing `Logs` directory. The default data directory is `Logs` beside the application; `Monitoring:DataRoot` can override it with an absolute local path.
 

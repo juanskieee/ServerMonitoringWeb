@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting.Server;
 using ServerMonitoringWeb.Models;
 using ServerMonitoringWeb.Services;
 
@@ -36,6 +37,13 @@ var app = builder.Build();
 var desktopMode = app.Configuration.GetValue<bool>("DesktopMode") &&
                   Environment.UserInteractive;
 
+
+app.Logger.LogInformation(
+    "Host: {ServerType}; Process ID: {ProcessId}; Interactive: {Interactive}; Desktop mode: {DesktopMode}",
+    app.Services.GetRequiredService<IServer>().GetType().Name,
+    Environment.ProcessId,
+    Environment.UserInteractive,
+    desktopMode);
 
 app.Logger.LogInformation(
     "Inventory: {Inventory}",

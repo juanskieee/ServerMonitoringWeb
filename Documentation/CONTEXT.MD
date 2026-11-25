@@ -10,7 +10,11 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 
 - One Windows .NET 8 application hosts both Razor Pages and the monitoring worker.
   Stopping or recycling the application stops monitoring; closing the browser does not
-  affect the default server mode. Browser launch, heartbeat endpoint and heartbeat-driven
+  affect the default server mode. The worker lives inside its host process, not the
+  browser. IIS must start and keep its own host running; a manually launched EXE is
+  not a substitute. Startup logs identify the hosting server implementation, process
+  ID, interactivity and desktop mode. The IIS publish profile stages files locally
+  and does not overwrite live binaries. Browser launch, heartbeat endpoint and heartbeat-driven
   graceful shutdown are enabled only with explicit `DesktopMode=true` on an interactive
   Windows host. IIS must use the default mode.
 
@@ -50,7 +54,7 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - Unknown JSON properties
   - 1 MiB maximum file size
 
-- Inventory files are copied during build and publish and must be preserved during deployment.
+- The local inventory is copied to build output for development only. Publish output excludes servers.json and monitoring Logs; provision and preserve them separately during deployment.
 
 - `Models/Configurations.cs` contains `MonitoringOptions`, `MonitoringConfiguration`, and
   `InventoryConfiguration`. Path resolution is defined in `Services/DataPaths.cs`.
@@ -140,9 +144,13 @@ Default structure:
   have no application-level kill-on-parent-exit ownership or independent watchdog.
 - WMI authentication failures have no backoff or stop condition; alternate-IP retries
   can lock accounts and amplify authentication/security logging.
-- Stored ping status has no freshness requirement, metrics have no collection
-  timestamp, and HTTP refresh success does not establish collection health. A valid
-  old results file can continue showing Online after persistence fails.
+- The dashboard displays a shared freshness notice when saved ping observations or
+  usable resource metrics are overdue. Thresholds allow for configured timer intervals,
+  concurrency, target count, address count and timeouts, with a 60-second minimum.
+  Metrics now record LastMetricsUtc when usable readings return; old snapshots without
+  that field are treated as unverified until refreshed. Stored connectivity status,
+  audio and outage history are not changed by the notice. A fresh HTTP response alone
+  does not establish collection health.
 - Removed server IDs are not pruned from `latest.json`; malformed results block
   subsequent updates until operator repair. CSV date retention has no byte quota
   and depends on completed ping cycles, valid inventory, and successful file deletion.
@@ -152,7 +160,7 @@ Default structure:
 - Dashboard access has no application-enforced authentication requirement. Production
   access control, HTTPS, private data paths, and inventory/deployment/backup ACLs must
   be supplied by the deployment. Plaintext inventory credentials are copied to
-  build/publish output.
+  local build output.
 - No ordinary unbounded task/listener/handle retention pattern was found, but 24/7
   resource use and target-provider impact remain unmeasured. The audit rates the
   supplied implementation 6/10 and does not approve unattended production operation.
@@ -198,7 +206,7 @@ Default structure:
 
 ## Notices
 
-- Configuration and storage notices are limited to 25% of the available content height.
+- Configuration, storage and freshness notices are limited to 25% of the available content height.
 - Notice areas scroll independently.
 - Server cards and page height remain fixed.
 

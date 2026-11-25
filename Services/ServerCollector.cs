@@ -129,6 +129,11 @@ public sealed class ServerCollector(
 
                 if (hasMetrics)
                 {
+                    snapshot = snapshot with
+                    {
+                        LastMetricsUtc = DateTimeOffset.UtcNow
+                    };
+
                     break;
                 }
             }

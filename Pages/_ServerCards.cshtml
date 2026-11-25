@@ -15,6 +15,13 @@
             </section>
         }
 
+        @if (Model.FreshnessWarning is { } freshnessWarning)
+        {
+            <section class="notice" aria-label="Monitoring data freshness">
+                <p>@freshnessWarning</p>
+            </section>
+        }
+
         @if (Model.StorageError is { } storageError)
         {
             <section class="notice notice-error"
