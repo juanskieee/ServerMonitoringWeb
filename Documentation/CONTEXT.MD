@@ -9,7 +9,10 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 # Application and Inventory
 
 - One Windows .NET 8 application hosts both Razor Pages and the monitoring worker.
-  Stopping or recycling the application stops monitoring; closing the browser does not.
+  Stopping or recycling the application stops monitoring; closing the browser does not
+  affect the default server mode. Browser launch, heartbeat endpoint and heartbeat-driven
+  graceful shutdown are enabled only with explicit `DesktopMode=true` on an interactive
+  Windows host. IIS must use the default mode.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.
@@ -25,6 +28,13 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - `Enabled = false` pauses all checks for that server.
 
 - Passwords remain plain text outside `wwwroot`.
+- WMI connects once per collection attempt. Local WMI (when `ComputerName` matches the
+  monitoring machine) uses the process identity; remote WMI uses inventory credentials
+  and the existing packet-privacy authentication. Connection warnings identify which
+  mode failed, without disclosing credentials. Correct passwords alone do not establish
+  WMI/DCOM authorization.
+- Issue #1 lifecycle and WMI diagnostic changes were source-reviewed; build and Windows/IIS
+  runtime validation are pending. The deployed inventory is not available in Git.
 
 - Inventory validation checks:
   - IDs

@@ -14,16 +14,16 @@ internal static class WmiCollector
     {
         var metrics = new CollectionMetrics();
 
+        var isLocal =
+            !string.IsNullOrWhiteSpace(server.ComputerName) &&
+            string.Equals(
+                server.ComputerName,
+                Environment.MachineName,
+                StringComparison.OrdinalIgnoreCase);
+
         try
         {
             ManagementScope scope;
-
-            var isLocal =
-                !string.IsNullOrWhiteSpace(server.ComputerName) &&
-                string.Equals(
-                    server.ComputerName,
-                    Environment.MachineName,
-                    StringComparison.OrdinalIgnoreCase);
 
             if (isLocal)
             {
@@ -46,7 +46,6 @@ internal static class WmiCollector
                     options);
             }
 
-            scope.Connect();
             scope.Connect();
 
             // Collect each metric independently.
@@ -71,10 +70,12 @@ internal static class WmiCollector
         }
         catch (Exception ex)
         {
+            var connectionMode = isLocal
+                ? "Local WMI (process identity)"
+                : "Remote WMI (inventory credentials)";
+
             metrics.Warnings.Add(
-                CollectionFailure.Describe(
-                    ex,
-                    server.Password));
+                $"{connectionMode}: {CollectionFailure.Describe(ex, server.Password)}");
         }
 
         return metrics;

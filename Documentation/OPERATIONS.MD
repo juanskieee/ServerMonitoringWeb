@@ -21,7 +21,17 @@ The application hosts both:
 - Razor Pages dashboard
 - Monitoring worker
 
-Stopping or recycling the application stops monitoring.
+Stopping or recycling the application stops monitoring. In the default server mode,
+closing a browser does not stop the worker. No browser is launched by the server.
+
+For the optional interactive desktop EXE behavior only, launch from an interactive Windows session:
+
+```powershell
+.\ServerMonitoringWeb.exe --DesktopMode=true --urls http://localhost:5000
+```
+
+This opens Edge and stops the host gracefully after browser heartbeats expire.
+Do not enable `DesktopMode` in IIS or unattended deployments.
 
 ## IIS Deployment
 
@@ -36,7 +46,20 @@ Grant the application identity:
 - Read access to inventory files
 - Write access to the configured data directory
 
-Run only one application instance per data root.
+Run only one application instance per data root. Stop the standalone EXE before
+starting IIS against the same data root.
+
+If IIS returns HTTP 500.30, check the Windows Application event log and temporarily
+enable ASP.NET Core Module stdout logging in the published `web.config`. Ensure
+its log directory is writable by the application pool identity; disable stdout logging
+after diagnosis. Confirm that the .NET 8 Hosting Bundle/ASP.NET Core Module is installed,
+that the published application matches the configured hosting mode, and that the pool
+identity can read inventory and write monitoring data. A successful standalone launch
+is not proof that IIS can start under its different identity.
+
+After redeployment, verify the site stays running with all browsers closed for at
+least one minute, then reopen the dashboard. If 500.30 persists, capture the first
+startup exception (redact sensitive information).
 
 ## Data Storage
 
@@ -210,6 +233,18 @@ JSON requires escaped backslashes:
 ```
 
 ---
+
+### WMI access denied
+
+`0x80070005` and `0x80041003` are authorization failures, even when the password is
+correct. The warning identifies local versus remote WMI. For local WMI, check the
+actual IIS application pool/process identity; Windows does not allow alternate
+credentials for local WMI connections. For remote WMI, check the configured account
+format and the account's approved DCOM and `root\cimv2` remote WMI permissions with
+the server administrator. Compare under the deployed host identity, not just a
+logged-in administrator session. Do not weaken UAC, DCOM security or firewall policy
+or grant broad administrator privileges to suppress the error. If access still fails,
+provide the sanitized warning and relevant Windows event details.
 
 ## IP Order
 
