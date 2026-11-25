@@ -32,7 +32,10 @@ RegisterServices(
 
 var app = builder.Build();
 
-DateTime lastHeartbeat = DateTime.UtcNow;
+// Desktop behavior is opt-in and never enabled for non-interactive hosts.
+var desktopMode = app.Configuration.GetValue<bool>("DesktopMode") &&
+                  Environment.UserInteractive;
+
 
 app.Logger.LogInformation(
     "Inventory: {Inventory}",
@@ -52,54 +55,64 @@ app.Logger.LogInformation(
 
 ConfigurePipeline(app);
 
-// Browser heartbeat endpoint
-app.MapPost("/heartbeat", () =>
+// IIS and unattended monitoring must not depend on an open browser.
+if (desktopMode)
 {
-    lastHeartbeat = DateTime.UtcNow;
-    return Results.Ok();
-});
+    long lastHeartbeat = Stopwatch.GetTimestamp();
 
-// Open browser automatically
-if (!app.Environment.IsDevelopment())
-{
+    app.MapPost("/heartbeat", () =>
+    {
+        Interlocked.Exchange(ref lastHeartbeat, Stopwatch.GetTimestamp());
+        return Results.Ok();
+    });
+
     app.Lifetime.ApplicationStarted.Register(() =>
     {
-        Task.Run(async () =>
+        Interlocked.Exchange(ref lastHeartbeat, Stopwatch.GetTimestamp());
+        _ = Task.Run(async () =>
         {
+            var stopping = app.Lifetime.ApplicationStopping;
+
             try
             {
-                await Task.Delay(1500);
+                await Task.Delay(1500, stopping);
 
-                Process.Start(new ProcessStartInfo
+                try
                 {
-                    FileName = "cmd.exe",
-                    Arguments =
-                        "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
+                    using var browser = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments =
+                            "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    app.Logger.LogWarning(ex, "Could not open the desktop browser.");
+                }
+
+                while (!stopping.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10), stopping);
+
+                    if (Stopwatch.GetElapsedTime(Interlocked.Read(ref lastHeartbeat)) >
+                        TimeSpan.FromSeconds(20))
+                    {
+                        app.Logger.LogInformation("Desktop heartbeat expired; stopping application.");
+                        app.Lifetime.StopApplication();
+                        return;
+                    }
+                }
             }
-            catch
+            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
             {
+                // Normal host shutdown.
             }
         });
     });
 }
-
-// Shutdown when browser stops sending heartbeats
-Task task = Task.Run(async () =>
-{
-    while (true)
-    {
-        await Task.Delay(10000);
-
-        if (DateTime.UtcNow - lastHeartbeat >
-            TimeSpan.FromSeconds(20))
-        {
-            Environment.Exit(0);
-        }
-    }
-});
 
 app.Run();
 

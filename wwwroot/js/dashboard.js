@@ -438,11 +438,12 @@
     }
   }
 
-    initializeDashboard();
-    navigator.sendBeacon("/heartbeat");
+  initializeDashboard();
 
-    setInterval(() => {
-        navigator.sendBeacon("/heartbeat");
-    }, 5000);
+  const heartbeatUrl = dashboardContent.dataset.heartbeatUrl;
+  if (heartbeatUrl) {
+    navigator.sendBeacon(heartbeatUrl);
+    setInterval(() => navigator.sendBeacon(heartbeatUrl), 5000);
+  }
 })();
 
