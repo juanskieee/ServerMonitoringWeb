@@ -1,6 +1,6 @@
 # Project Context
 
-Updated: November 19, 2026 (Asia/Taipei).
+Updated: November 25, 2026 (Asia/Taipei).
 
 See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubleshooting. This document describes the current implementation and serves as the primary technical reference.
 
@@ -28,13 +28,19 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - `Enabled = false` pauses all checks for that server.
 
 - Passwords remain plain text outside `wwwroot`.
-- WMI connects once per collection attempt. Local WMI (when `ComputerName` matches the
-  monitoring machine) uses the process identity; remote WMI uses inventory credentials
-  and the existing packet-privacy authentication. Connection warnings identify which
-  mode failed, without disclosing credentials. Correct passwords alone do not establish
-  WMI/DCOM authorization.
-- Issue #1 lifecycle and WMI diagnostic changes were source-reviewed; build and Windows/IIS
-  runtime validation are pending. The deployed inventory is not available in Git.
+- WMI connects once per collection attempt. The actual selected IP address is
+  compared to loopback and local interface unicast addresses (including IPv4-mapped
+  IPv6 normalization); a local match uses the process identity and no alternate
+  credentials. Otherwise remote WMI uses the existing inventory credentials and
+  packet-privacy authentication. ComputerName is metadata, not a locality override.
+  Interface enumeration is local and sends no network probes. If identification
+  throws, the attempt reports a warning rather than trying explicit credentials.
+  The existing missing-credentials skip rule is unchanged.
+- Connection warnings identify the mode that failed, without disclosing credentials.
+  Correct passwords alone do not establish WMI/DCOM authorization.
+- The deployed inventory is not available in Git. Issue #7 reported a local address
+  match with a hostname mismatch; the targeted fix was source-reviewed, but a .NET
+  build and approved deployment/runtime validation remain pending.
 
 - Inventory validation checks:
   - IDs
@@ -83,6 +89,10 @@ Default structure:
 - Each completed per-server ping or details result reads and rewrites the complete
   `latest.json` file through a same-directory temporary file and replacement move.
   A process-local semaphore serializes snapshot/history writes.
+- Worker errors identify the failing stage (ping collection, metrics collection,
+  storage read, save ping results or save metrics results) and exception type/HRESULT.
+  Storage failures are not labeled as failed network pings. Storage behavior and
+  the existing connectivity/outage rules remain unchanged.
 - `History/yyyy-MM-dd.metrics.csv` contains outage transitions only, with columns
   `Timestamp,ServerId,ServerName,Event`. A known Online to Error ping transition
   writes `Offline`; Error to Online writes `Recovered`. Timestamp and filename

@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Management;
+using System.Net;
+using System.Net.NetworkInformation;
 using ServerMonitoringWeb.Models;
 
 namespace ServerMonitoringWeb.Services;
@@ -14,18 +16,17 @@ internal static class WmiCollector
     {
         var metrics = new CollectionMetrics();
 
-        var isLocal =
-            !string.IsNullOrWhiteSpace(server.ComputerName) &&
-            string.Equals(
-                server.ComputerName,
-                Environment.MachineName,
-                StringComparison.OrdinalIgnoreCase);
+        bool? isLocal = null;
 
         try
         {
+            // Classify the actual address being queried, not the inventory hostname.
+            // Interface enumeration is local; it sends no network probes.
+            isLocal = IsLocalAddress(IPAddress.Parse(ipAddress));
+
             ManagementScope scope;
 
-            if (isLocal)
+            if (isLocal == true)
             {
                 scope = new ManagementScope(
                     @"\\localhost\root\cimv2");
@@ -70,15 +71,52 @@ internal static class WmiCollector
         }
         catch (Exception ex)
         {
-            var connectionMode = isLocal
-                ? "Local WMI (process identity)"
-                : "Remote WMI (inventory credentials)";
+            var connectionMode = isLocal switch
+            {
+                true => "Local WMI (process identity)",
+                false => "Remote WMI (inventory credentials)",
+                null => "WMI target identification"
+            };
 
             metrics.Warnings.Add(
                 $"{connectionMode}: {CollectionFailure.Describe(ex, server.Password)}");
         }
 
         return metrics;
+    }
+
+    private static bool IsLocalAddress(IPAddress address)
+    {
+        // Treat IPv4-mapped IPv6 addresses consistently with IPv4.
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (IPAddress.IsLoopback(address))
+        {
+            return true;
+        }
+
+        foreach (var networkInterface in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            foreach (var unicast in networkInterface.GetIPProperties().UnicastAddresses)
+            {
+                var localAddress = unicast.Address;
+
+                if (localAddress.IsIPv4MappedToIPv6)
+                {
+                    localAddress = localAddress.MapToIPv4();
+                }
+
+                if (address.Equals(localAddress))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private static void ReadMetric(

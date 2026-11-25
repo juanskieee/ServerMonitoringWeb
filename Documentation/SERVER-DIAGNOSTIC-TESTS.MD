@@ -1,6 +1,6 @@
 # Production server diagnostics — read-only only
 
-Follow-up to issues #3 and #5. These checks are intended for an authorized operator on a live production Windows server. They inspect only the monitoring application and its existing data. They do not change server settings, write test files, restart services, recycle pools, launch another application instance, or authenticate to remote servers.
+Follow-up to issues #3, #5 and #7. These checks are intended for an authorized operator on a live production Windows server. They inspect only the monitoring application and its existing data. They do not change server settings, write test files, restart services, recycle pools, launch another application instance, or authenticate to remote servers.
 
 **Do not run the old version of this checklist.** Permission remediation and active WMI tests are deliberately excluded. Do not change permissions, app pool settings, credentials, inventory, firewall, registry or DCOM configuration as part of this investigation. Any remediation or active remote test requires a separately approved procedure.
 
@@ -61,7 +61,7 @@ try {
 }
 ```
 
-If HostnameMatches is False and LocalIPMatches is True, this supports the hypothesis that the collector is treating a local address as remote. Do not edit the inventory yet. The developer can investigate the local-detection logic after the result is reported.
+A hostname mismatch with a local IP match was already reported in issue #7. The revised collector identifies locality from the actual selected IP; this passive check is only needed again if configuration changes or the administrator requests it. Do not edit the inventory or run additional tests on production without approval.
 
 ## 4. Remote WMI errors — deferred
 
