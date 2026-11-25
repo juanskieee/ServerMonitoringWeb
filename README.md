@@ -73,6 +73,7 @@ See [Operations](Documentation/OPERATIONS.MD) for the complete deployment, confi
 
 - [CONTEXT.MD](Documentation/CONTEXT.MD): technical source of truth and known limitations.
 - [OPERATIONS.MD](Documentation/OPERATIONS.MD): configuration, deployment and maintenance.
+- [SERVER-DIAGNOSTIC-TESTS.MD](Documentation/SERVER-DIAGNOSTIC-TESTS.MD): server-side diagnostic commands and results checklist.
 - [AGENTS.md](Documentation/AGENTS.md): development rules and verification boundaries.
 - [PRODUCTION-SAFETY-AUDIT.MD](Documentation/PRODUCTION-SAFETY-AUDIT.MD): production safety audit.
 
