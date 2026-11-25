@@ -1,96 +1,94 @@
-# Server-side diagnostic tests
+# Production server diagnostics — read-only only
 
-For [issue #3 — SERVER SIDE ISSUE #2](https://github.com/juanskieee/ServerMonitoringWeb/issues/3).
+Follow-up to issues #3 and #5. These checks are intended for an authorized operator on a live production Windows server. They inspect only the monitoring application and its existing data. They do not change server settings, write test files, restart services, recycle pools, launch another application instance, or authenticate to remote servers.
 
-Run on the actual monitoring server in Windows PowerShell 5.1 (powershell.exe). Use an authorized administrator session for IIS and ACL inspection. Record results before changing settings. All tests are read-only except the explicitly marked optional remediation.
+**Do not run the old version of this checklist.** Permission remediation and active WMI tests are deliberately excluded. Do not change permissions, app pool settings, credentials, inventory, firewall, registry or DCOM configuration as part of this investigation. Any remediation or active remote test requires a separately approved procedure.
 
-## 1. Identify the execution context
+## 1. Hosting context — already collected
+
+The hosting context was reported in issue #5. No need to repeat the broad IIS inventory commands. The monitoring application shares an IIS pool with other applications; do not restart, recycle or reconfigure it.
+
+The terminal identity and the IIS application identity are not necessarily the same. A running pool alone does not prove the monitoring application started successfully.
+
+## 2. Inspect the monitoring data directory
+
+Run in Windows PowerShell. Substitute the actual data directory reported by the monitoring application if it differs from the example. These commands read file metadata and ACLs only. Do not paste raw ACL output into GitHub.
+
 ```powershell
-whoami
-hostname
-Import-Module WebAdministration
-Get-WebApplication | Select-Object Path, ApplicationPool
-Get-Website | Select-Object Name, ApplicationPool
-Get-ChildItem IIS:\AppPools |
-    Select-Object Name, State, @{N='IdentityType';E={$_.processModel.identityType}}
-& "$env:windir\System32\inetsrv\appcmd.exe" list wp
-```
-The terminal account is not necessarily the IIS application identity. Identify the actual hosting mode and pool. Do not run two application instances using the same data root.
+$root = 'C:\inetpub\wwwroot\ServerMonitoringWeb'
+$data = Join-Path $root 'Logs'
 
-## 2. Inspect storage permissions
-Use the deployed content root and actual data directory from startup logs. The example assumes the default Logs location.
-```powershell
-Set-Location 'C:\inetpub\wwwroot\ServerMonitoringWeb'
-icacls .\Logs
-icacls .\Logs\latest.json
-icacls .\Logs\History
-Get-Item .\Logs\latest.json | Select-Object Length, LastWriteTime, Attributes
-```
-The hosting identity needs permission to read, create, replace and delete monitoring files. Check for deny rules, read-only files and conflicting instances. A successful administrator inspection does not prove IIS can write. The ping warning may originate in snapshot/history persistence, not ICMP.
-
-### Optional remediation (requires administrator approval)
-Only if the actual IIS pool uses ApplicationPoolIdentity and its data-directory ACL is insufficient, substitute the real pool name and grant Modify on the data directory only:
-```powershell
-$pool = 'YOUR_POOL_NAME'
-icacls .\Logs /grant "IIS AppPool\${pool}:(OI)(CI)M" /T
-```
-For a custom DataRoot or different identity, have the administrator apply equivalent targeted permissions. Do not grant Everyone or broad administrative privileges.
-
-## 3. Check local server detection (srv05)
-```powershell
-Set-Location 'C:\inetpub\wwwroot\ServerMonitoringWeb'
-$inventory = Get-Content .\servers.json -Raw | ConvertFrom-Json
-$server = $inventory.Servers | Where-Object { $_.Id -eq 'srv05' }
-if (-not $server) { throw 'srv05 was not found in the active inventory.' }
-$localIPs = (Get-NetIPAddress).IPAddress
-[PSCustomObject]@{
-    ServerId = $server.Id
-    HostnameMatches = ($server.ComputerName -eq $env:COMPUTERNAME)
-    LocalIPMatches = [bool]($server.IpAddresses | Where-Object { $_ -in $localIPs })
+foreach ($path in @($data, (Join-Path $data 'latest.json'), (Join-Path $data 'History'))) {
+    if (Test-Path -LiteralPath $path) {
+        Get-Item -LiteralPath $path |
+            Select-Object Name, Attributes, LastWriteTime
+        (Get-Acl -LiteralPath $path).Access |
+            Where-Object { $_.IdentityReference.Value -eq 'IIS AppPool\DefaultAppPool' } |
+            Select-Object FileSystemRights, AccessControlType, IsInherited
+    } else {
+        Write-Output ('Missing: ' + (Split-Path $path -Leaf))
+    }
 }
-Get-WmiObject -Namespace root\cimv2 -Class Win32_OperatingSystem -ErrorAction Stop |
-    Select-Object Caption, Version
 ```
-If HostnameMatches is False and LocalIPMatches is True, confirm the entry represents the monitoring host. The current collector identifies local WMI using ComputerName. A local target incorrectly classified as remote can produce 0x80041064. Correct the deployed ComputerName only after confirming the target identity. The final command tests local WMI without explicit credentials, under the terminal identity rather than necessarily IIS.
 
-## 4. Test remote WMI (srv01, srv02, srv09)
-Choose one authorized affected remote target first. Use the same approved credentials as the deployed inventory. Do not print the inventory or repeatedly retry failed authentication.
+The filtered output shows only directly matching pool ACL entries, not effective permissions. Group membership, inherited rules and deny entries may also affect access. An absent matching entry does not prove a permission failure. Ask the administrator to review effective access if needed. No write probe is permitted.
+
+## 3. Check local server identification (srv05)
+
+Read the deployed inventory in memory, compare with local interface addresses and print only non-sensitive boolean results. Do not print the inventory, addresses, names, credentials or raw errors. This does not query remote machines or change configuration.
+
 ```powershell
-$target = Read-Host 'Enter authorized remote target IP'
-$cred = Get-Credential
-Get-WmiObject -Class Win32_OperatingSystem `
-    -Namespace root\cimv2 `
-    -ComputerName $target `
-    -Credential $cred `
-    -Authentication PacketPrivacy `
-    -Impersonation Impersonate `
-    -ErrorAction Stop |
-    Select-Object Caption, Version
+$root = 'C:\inetpub\wwwroot\ServerMonitoringWeb'
+$inventory = $null
+$entry = $null
+try {
+    $inventory = Get-Content -LiteralPath (Join-Path $root 'servers.json') -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    $entry = $inventory.Servers | Where-Object { $_.Id -eq 'srv05' } | Select-Object -First 1
+    if ($null -eq $entry) {
+        Write-Output 'srv05 entry not found'
+    } else {
+        $localIPs = @(Get-NetIPAddress -ErrorAction Stop | Select-Object -ExpandProperty IPAddress)
+        [PSCustomObject]@{
+            ServerId = 'srv05'
+            HostnameMatches = ($entry.ComputerName -eq $env:COMPUTERNAME)
+            LocalIPMatches = [bool]($entry.IpAddresses | Where-Object { $_ -in $localIPs })
+        }
+    }
+} catch {
+    Write-Output 'Local identification could not be completed; review privately.'
+} finally {
+    Remove-Variable inventory, entry, localIPs -ErrorAction SilentlyContinue
+}
 ```
-| Result | Interpretation |
-| --- | --- |
-| OS information returned | WMI works for this target, credential and terminal context; IIS may differ. |
-| 0x80070005 or 0x80041003 | Administrator should verify account authorization, DCOM and WMI namespace permissions. |
-| 0x800706BA | Investigate RPC connectivity, target availability and approved firewall policy. |
-| 0x80041064 | Explicit credentials were supplied to a local WMI connection. |
-| 0x8007052E | Check credentials and account format; avoid repeated attempts. |
 
-Do not disable UAC, firewall or DCOM security. Consult the administrator if access remains denied.
+If HostnameMatches is False and LocalIPMatches is True, this supports the hypothesis that the collector is treating a local address as remote. Do not edit the inventory yet. The developer can investigate the local-detection logic after the result is reported.
 
-## 5. Verify application behavior
-After approved corrections and deployment, verify that the IIS site and monitoring worker remain running for at least one minute with browsers closed. Check that latest.json continues updating and authorized CPU/RAM/disk readings return. If HTTP 500.30 persists, inspect Windows Application event logs and ASP.NET Core Module startup logs per [OPERATIONS.MD](OPERATIONS.MD).
+## 4. Remote WMI errors — deferred
 
-## Report results
-Post only sanitized results in issue #3. Do not publish passwords, usernames, hostnames, IP addresses, full ACLs or raw production logs.
+Use only the errors already present in existing application logs. Do not run remote WMI, credential prompts, ping probes, port tests or other active network tests under this checklist. They can create load or audit events, and failed authentication can contribute to lockout. Remote authorization testing must be separately planned and approved by the production administrator.
 
-- [ ] Hosting mode and pool identity type (no account names)
-- [ ] Data directory access for actual application identity: confirmed / denied / unknown
-- [ ] srv05 HostnameMatches: True / False
-- [ ] srv05 LocalIPMatches: True / False
-- [ ] Local WMI test: success / error code
-- [ ] Remote WMI test: server ID and success / error code
-- [ ] IIS startup and one-minute browser-closed check: pass / fail / not tested
-- [ ] Latest snapshot updates: yes / no
-- [ ] Remaining errors, sanitized
+## 5. Observe the existing deployment
 
-These tests require the authorized server environment and have not been executed by the repository assistant.
+Without changing browser state, launching the EXE, redeploying or restarting IIS, observe whether the existing dashboard is available and whether the existing latest.json timestamp advances. Repeat the read-only metadata command later if needed:
+
+```powershell
+Get-Item -LiteralPath (Join-Path $data 'latest.json') |
+    Select-Object Name, LastWriteTime, Length
+```
+
+A changing timestamp indicates a file is being updated; it does not prove every monitoring check succeeds.
+
+## Report only sanitized results
+
+Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, account names, credentials, IP addresses or raw ACLs to a public repository. Use an approved internal channel for sensitive evidence. Redact previously posted sensitive information and notify the appropriate administrator in accordance with company policy.
+
+- [x] Hosting context collected (no repeat required).
+- [ ] Monitoring data directory exists: yes / no / unknown.
+- [ ] latest.json exists and timestamp advances: yes / no / unknown.
+- [ ] Pool-specific ACL entry observed: allow / deny / none / unknown (not effective access).
+- [ ] srv05 HostnameMatches: True / False / unknown.
+- [ ] srv05 LocalIPMatches: True / False / unknown.
+- [ ] Existing dashboard available: yes / no / unknown.
+- [ ] Existing error codes only, without sensitive details.
+
+These commands were source-reviewed, not executed by the developer assistant on the production server. Even read-only inspection must comply with local access and change-management policies.
