@@ -3,34 +3,34 @@
     "ServerId": "srv09",
     "ServerName": "RAIS_SERVER_INTRANET",
     "IpAddress": "10.27.1.192",
-    "ConfigurationRevision": "4B8DFBD57131D6BA414E56A3CE5702C13BC4051DA66512AB5CCFD67344A69F85",
+    "ConfigurationRevision": "25608BFE56AF998997D5471F9EAF944EBF88486DC7D02E967587305D7412617E",
     "IsOnline": true,
-    "CpuPercent": 2,
-    "RamPercent": 29.580234829813396,
+    "CpuPercent": 0,
+    "RamPercent": 30.316556157089973,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 28.35515392,
+        "FreeGb": 25.873997824,
         "SizeGb": 548.968329216
       },
       {
         "Name": "E:",
-        "FreeGb": 499.770892288,
+        "FreeGb": 499.579281408,
         "SizeGb": 1099.492749312
       }
     ],
-    "ResponseTimeMs": 1,
-    "LastPingUtc": "2026-11-21T00:30:18.3500227+00:00",
+    "ResponseTimeMs": 3,
+    "LastPingUtc": "2026-11-25T08:52:36.5458273+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:18.3500227+00:00",
+        "CheckedUtc": "2026-11-25T08:52:36.5458273+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 1
+        "ResponseTimeMs": 3
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:16.3621582+00:00",
+        "CheckedUtc": "2026-11-25T08:52:34.543324+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 22
+        "ResponseTimeMs": 3
       }
     ],
     "CollectionWarning": null,
@@ -42,32 +42,32 @@
     "IpAddress": "10.27.35.222",
     "ConfigurationRevision": "47035400C90EA7DAD4675A2D76F7C91CA534C91EB62CFF2E817D08461927DAFA",
     "IsOnline": true,
-    "CpuPercent": 47,
-    "RamPercent": 65.25676068369627,
+    "CpuPercent": 66,
+    "RamPercent": 65.8539536209875,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 1012.619911168,
+        "FreeGb": 1012.734160896,
         "SizeGb": 1098.917081088
       },
       {
         "Name": "E:",
-        "FreeGb": 4721.538875392,
+        "FreeGb": 4714.117664768,
         "SizeGb": 8795.956703232
       }
     ],
-    "ResponseTimeMs": 22,
-    "LastPingUtc": "2026-11-21T00:30:17.3317719+00:00",
+    "ResponseTimeMs": 2,
+    "LastPingUtc": "2026-11-25T08:52:36.4792272+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:17.3317719+00:00",
+        "CheckedUtc": "2026-11-25T08:52:36.4792272+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 22
+        "ResponseTimeMs": 2
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:15.3275813+00:00",
+        "CheckedUtc": "2026-11-25T08:52:34.4800555+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 1
+        "ResponseTimeMs": 2
       }
     ],
     "CollectionWarning": null,
@@ -80,31 +80,31 @@
     "ConfigurationRevision": "1443826EC21305FA6B65EB346806113B9242911B4436275D49A68E4A2E85E845",
     "IsOnline": true,
     "CpuPercent": 3,
-    "RamPercent": 44.65910419923161,
+    "RamPercent": 50.02140222005157,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 814.847258624,
+        "FreeGb": 813.675016192,
         "SizeGb": 1098.916032512
       },
       {
         "Name": "E:",
-        "FreeGb": 6042.000494592,
+        "FreeGb": 6035.071717376,
         "SizeGb": 9895.468331008
       }
     ],
-    "ResponseTimeMs": 3,
-    "LastPingUtc": "2026-11-21T00:30:17.3325324+00:00",
+    "ResponseTimeMs": 5,
+    "LastPingUtc": "2026-11-25T08:52:36.4790802+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:17.3325324+00:00",
+        "CheckedUtc": "2026-11-25T08:52:36.4790802+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 3
+        "ResponseTimeMs": 5
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:15.3279584+00:00",
+        "CheckedUtc": "2026-11-25T08:52:34.4800854+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 1
+        "ResponseTimeMs": 2
       }
     ],
     "CollectionWarning": null,
@@ -120,15 +120,15 @@
     "RamPercent": null,
     "Disks": [],
     "ResponseTimeMs": null,
-    "LastPingUtc": "2026-11-20T11:54:09.9696773+00:00",
+    "LastPingUtc": "2026-11-25T08:52:35.472845+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-20T11:54:09.9696773+00:00",
+        "CheckedUtc": "2026-11-25T08:52:35.472845+00:00",
         "IsOnline": false,
         "ResponseTimeMs": null
       },
       {
-        "CheckedUtc": "2026-11-20T11:54:07.9672529+00:00",
+        "CheckedUtc": "2026-11-25T08:52:33.4810387+00:00",
         "IsOnline": false,
         "ResponseTimeMs": null
       }
@@ -146,15 +146,15 @@
     "RamPercent": null,
     "Disks": [],
     "ResponseTimeMs": null,
-    "LastPingUtc": "2026-11-20T11:54:09.9703673+00:00",
+    "LastPingUtc": "2026-11-25T08:52:35.4736112+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-20T11:54:09.9703673+00:00",
+        "CheckedUtc": "2026-11-25T08:52:35.4736112+00:00",
         "IsOnline": false,
         "ResponseTimeMs": null
       },
       {
-        "CheckedUtc": "2026-11-20T11:54:07.9680134+00:00",
+        "CheckedUtc": "2026-11-25T08:52:33.4810929+00:00",
         "IsOnline": false,
         "ResponseTimeMs": null
       }
@@ -168,32 +168,32 @@
     "IpAddress": "10.27.32.233",
     "ConfigurationRevision": "329085ACF27D16AFE885FDC08E3F5E4C0EF89F5A8D05A93C7DFED6358371DE00",
     "IsOnline": true,
-    "CpuPercent": 19,
-    "RamPercent": 59.625912761170554,
+    "CpuPercent": 57,
+    "RamPercent": 59.730522603841884,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 33.578622976,
+        "FreeGb": 29.591752704,
         "SizeGb": 107.005079552
       },
       {
         "Name": "E:",
-        "FreeGb": 3385.414496256,
+        "FreeGb": 3385.070149632,
         "SizeGb": 4397.910192128
       }
     ],
-    "ResponseTimeMs": 2,
-    "LastPingUtc": "2026-11-21T00:30:19.3250869+00:00",
+    "ResponseTimeMs": 3,
+    "LastPingUtc": "2026-11-25T08:52:35.4728456+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:19.3250869+00:00",
+        "CheckedUtc": "2026-11-25T08:52:35.4728456+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 2
+        "ResponseTimeMs": 3
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:17.3317343+00:00",
+        "CheckedUtc": "2026-11-25T08:52:33.4810388+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 21
+        "ResponseTimeMs": 2
       }
     ],
     "CollectionWarning": null,
@@ -205,30 +205,30 @@
     "IpAddress": "10.27.32.239",
     "ConfigurationRevision": "DE78E70428AFC0BB10E9234501055F7F2BC491A49C934F7B78F4DB36B90CDF1A",
     "IsOnline": true,
-    "CpuPercent": 2,
-    "RamPercent": 55.03322924194321,
+    "CpuPercent": 8,
+    "RamPercent": 54.88638493555123,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 79.871782912,
+        "FreeGb": 79.37806336,
         "SizeGb": 321.752395776
       },
       {
         "Name": "E:",
-        "FreeGb": 1048.418390016,
+        "FreeGb": 1047.896236032,
         "SizeGb": 2199.020105728
       }
     ],
-    "ResponseTimeMs": 21,
-    "LastPingUtc": "2026-11-21T00:30:17.3317343+00:00",
+    "ResponseTimeMs": 3,
+    "LastPingUtc": "2026-11-25T08:52:35.4728446+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:17.3317343+00:00",
+        "CheckedUtc": "2026-11-25T08:52:35.4728446+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 21
+        "ResponseTimeMs": 3
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:15.3271571+00:00",
+        "CheckedUtc": "2026-11-25T08:52:33.4820507+00:00",
         "IsOnline": true,
         "ResponseTimeMs": 1
       }
@@ -242,17 +242,17 @@
     "IpAddress": "10.27.32.155",
     "ConfigurationRevision": "2A799ECD3D77BD7FC584896877D76DAD036139CE1B7DBB06655F8BBF15BE62D4",
     "IsOnline": true,
-    "CpuPercent": 2,
-    "RamPercent": 9.497622810717273,
+    "CpuPercent": 14,
+    "RamPercent": 9.578245302663964,
     "Disks": [
       {
         "Name": "C:",
-        "FreeGb": 300.071755776,
+        "FreeGb": 300.077748224,
         "SizeGb": 321.753444352
       },
       {
         "Name": "E:",
-        "FreeGb": 1086.32047616,
+        "FreeGb": 1085.776134144,
         "SizeGb": 1099.508416512
       },
       {
@@ -262,17 +262,17 @@
       }
     ],
     "ResponseTimeMs": 1,
-    "LastPingUtc": "2026-11-21T00:30:18.3268088+00:00",
+    "LastPingUtc": "2026-11-25T08:52:36.4796538+00:00",
     "PingLog": [
       {
-        "CheckedUtc": "2026-11-21T00:30:18.3268088+00:00",
+        "CheckedUtc": "2026-11-25T08:52:36.4796538+00:00",
         "IsOnline": true,
         "ResponseTimeMs": 1
       },
       {
-        "CheckedUtc": "2026-11-21T00:30:16.3260964+00:00",
+        "CheckedUtc": "2026-11-25T08:52:34.4804924+00:00",
         "IsOnline": true,
-        "ResponseTimeMs": 3
+        "ResponseTimeMs": 2
       }
     ],
     "CollectionWarning": null,

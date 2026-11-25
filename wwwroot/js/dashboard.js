@@ -438,6 +438,11 @@
     }
   }
 
-  initializeDashboard();
+    initializeDashboard();
+    navigator.sendBeacon("/heartbeat");
+
+    setInterval(() => {
+        navigator.sendBeacon("/heartbeat");
+    }, 5000);
 })();
 

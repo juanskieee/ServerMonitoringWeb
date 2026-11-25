@@ -1,14 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using ServerMonitoringWeb.Models;
 using ServerMonitoringWeb.Services;
 
+
 if (!OperatingSystem.IsWindows())
 {
-    Console.Error.WriteLine(
-        "Windows only.");
-
+    Console.Error.WriteLine("Windows only.");
     return 1;
 }
 
@@ -19,22 +19,20 @@ if (await TryRunCollectorModeAsync(args))
     return 0;
 }
 
-var builder =
-    WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-var options =
-    BuildMonitoringOptions(builder);
+var options = BuildMonitoringOptions(builder);
 
-var paths =
-    CreateDataPaths(builder);
+var paths = CreateDataPaths(builder);
 
 RegisterServices(
     builder.Services,
     options,
     paths);
 
-var app =
-    builder.Build();
+var app = builder.Build();
+
+DateTime lastHeartbeat = DateTime.UtcNow;
 
 app.Logger.LogInformation(
     "Inventory: {Inventory}",
@@ -53,6 +51,55 @@ app.Logger.LogInformation(
     paths.HistoryDirectory);
 
 ConfigurePipeline(app);
+
+// Browser heartbeat endpoint
+app.MapPost("/heartbeat", () =>
+{
+    lastHeartbeat = DateTime.UtcNow;
+    return Results.Ok();
+});
+
+// Open browser automatically
+if (!app.Environment.IsDevelopment())
+{
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(1500);
+
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments =
+                        "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            }
+            catch
+            {
+            }
+        });
+    });
+}
+
+// Shutdown when browser stops sending heartbeats
+Task task = Task.Run(async () =>
+{
+    while (true)
+    {
+        await Task.Delay(10000);
+
+        if (DateTime.UtcNow - lastHeartbeat >
+            TimeSpan.FromSeconds(20))
+        {
+            Environment.Exit(0);
+        }
+    }
+});
 
 app.Run();
 
@@ -80,7 +127,6 @@ static async Task<bool> TryRunCollectorModeAsync(
     if (server is null)
     {
         Environment.ExitCode = 1;
-
         return true;
     }
 
@@ -105,8 +151,6 @@ static MonitoringOptions BuildMonitoringOptions(
         .GetSection("Monitoring")
         .Bind(options);
 
-    // Validate configuration during startup so invalid
-    // settings fail immediately instead of during monitoring.
     Validator.ValidateObject(
         options,
         new ValidationContext(options),
@@ -155,7 +199,8 @@ static void ConfigurePipeline(
         app.UseHsts();
     }
 
-    app.UseHttpsRedirection();
+    // Disabled for EXE deployment
+    // app.UseHttpsRedirection();
 
     app.UseStaticFiles();
 

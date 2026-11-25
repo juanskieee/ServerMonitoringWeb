@@ -16,22 +16,37 @@ internal static class WmiCollector
 
         try
         {
-            var options = new ConnectionOptions
+            ManagementScope scope;
+
+            var isLocal =
+                !string.IsNullOrWhiteSpace(server.ComputerName) &&
+                string.Equals(
+                    server.ComputerName,
+                    Environment.MachineName,
+                    StringComparison.OrdinalIgnoreCase);
+
+            if (isLocal)
             {
-                Username = server.Username,
-                Password = server.Password,
-                Impersonation = ImpersonationLevel.Impersonate,
-                Authentication = AuthenticationLevel.PacketPrivacy,
+                scope = new ManagementScope(
+                    @"\\localhost\root\cimv2");
+            }
+            else
+            {
+                var options = new ConnectionOptions
+                {
+                    Username = server.Username,
+                    Password = server.Password,
+                    Impersonation = ImpersonationLevel.Impersonate,
+                    Authentication = AuthenticationLevel.PacketPrivacy,
+                    Timeout = TimeSpan.FromSeconds(3)
+                };
 
-                // Prevent a single WMI connection attempt from blocking
-                // collection for an excessive amount of time.
-                Timeout = TimeSpan.FromSeconds(3)
-            };
+                scope = new ManagementScope(
+                    $@"\\{ipAddress}\root\cimv2",
+                    options);
+            }
 
-            var scope = new ManagementScope(
-                $@"\\{ipAddress}\root\cimv2",
-                options);
-
+            scope.Connect();
             scope.Connect();
 
             // Collect each metric independently.
