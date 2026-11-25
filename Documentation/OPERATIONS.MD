@@ -61,8 +61,9 @@ maintenance window.
 
 The Visual Studio FolderProfile1 profile now publishes to the local repository
 `artifacts/iis-publish` directory, rather than the live share. Publishing to this
-profile alone does not deploy anything. The local staging directory is cleaned on
-publish. The build excludes monitoring Logs from output and publish excludes servers.json.
+profile alone does not deploy anything. Use a clean local staging directory; the profile does not delete
+existing files. Verify the destination is local before publishing. The build excludes
+monitoring Logs from output and publish excludes servers.json.
 
 For an approved deployment, back up the application and preserve the deployed inventory
 and monitoring data. The administrator can use the application-specific IIS
@@ -71,7 +72,9 @@ files to be released, copy the staged application files without deleting invento
 logs, and remove the offline file to restart the application. A manually launched EXE
 must be stopped separately by its authorized operator; the offline file cannot stop it.
 If files remain locked, stop deployment and investigate rather than killing shared IIS
-processes or forcing a copy. Do not run IISReset or recycle a shared pool.
+processes or forcing a copy. A partially copied release is not a reliable deployment.
+Build and stage on the development machine; validate that the staging output contains
+neither servers.json nor Logs before the approved deployment. Do not run IISReset or recycle a shared pool.
 See [Microsoft app_offline guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/app-offline?view=aspnetcore-8.0).
 
 If IIS returns HTTP 500.30, check the Windows Application event log and temporarily

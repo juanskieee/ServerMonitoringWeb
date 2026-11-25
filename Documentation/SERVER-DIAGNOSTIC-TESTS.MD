@@ -78,6 +78,37 @@ Get-Item -LiteralPath (Join-Path $data 'latest.json') |
 
 A changing timestamp indicates a file is being updated; it does not prove every monitoring check succeeds.
 
+## 6. Issue #9 — inspect hosting configuration without changes
+
+Use existing logs first. If the production administrator authorizes another passive inspection,
+the following commands show only the monitoring application's configured hosting model and
+pool settings. They do not start a worker, query remote machines, or alter configuration.
+
+```powershell
+$root = 'C:\inetpub\wwwroot\ServerMonitoringWeb'
+[xml]$config = Get-Content -LiteralPath (Join-Path $root 'web.config') -Raw
+$config.SelectNodes('//aspNetCore') | Select-Object hostingModel
+
+Import-Module WebAdministration
+$application = Get-WebApplication |
+    Where-Object { $_.Path -eq '/ServerMonitoringWeb' }
+foreach ($item in $application) {
+    $pool = Get-Item -LiteralPath ('IIS:\AppPools\' + $item.ApplicationPool)
+    [PSCustomObject]@{
+        StartMode = $pool.startMode
+        IdleTimeout = $pool.processModel.idleTimeout
+        IdentityType = $pool.processModel.identityType
+    }
+}
+```
+
+If the deployed application is not in the expected root or no matching IIS application is
+found, stop and report that privately. Do not change the shared pool. A dedicated IIS pool
+and preload configuration require administrator approval. The standalone EXE must not run
+alongside the IIS host. Check the existing logs for the new Host startup message, and observe
+the dashboard's freshness notice after approved deployment. The notice detects potentially
+old readings, not their root cause.
+
 ## Report only sanitized results
 
 Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, account names, credentials, IP addresses or raw ACLs to a public repository. Use an approved internal channel for sensitive evidence. Redact previously posted sensitive information and notify the appropriate administrator in accordance with company policy.
