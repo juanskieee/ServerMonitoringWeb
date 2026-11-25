@@ -1,6 +1,6 @@
 # Running and Configuring the Monitor
 
-Updated: November 19, 2026 (Asia/Taipei).
+Updated: November 25, 2026 (Asia/Taipei).
 
 See `CONTEXT.MD` for implementation details and known limitations.
 See `AGENTS.md` for development rules and project constraints.
@@ -86,6 +86,13 @@ With `Monitoring:DataRoot` omitted (the repository default), monitoring data is 
 The data directory and `History` are created automatically on startup, along with
 `latest.json` if it does not exist. Grant the application identity write access to `Logs`
 and preserve it during deployments.
+
+For storage errors, review the operation label and exception type/HRESULT in the
+application log. `Save ping results (storage) failed` is a persistence failure,
+not evidence that the target is offline. The save can involve latest.json or
+outage history. A missing direct pool ACL entry does not prove access is denied.
+Use the [read-only checklist](SERVER-DIAGNOSTIC-TESTS.MD) and have the administrator
+review effective access; do not change or recycle a shared production pool.
 
 To override the data directory, configure an absolute local path:
 
@@ -239,7 +246,9 @@ JSON requires escaped backslashes:
 `0x80070005` and `0x80041003` are authorization failures, even when the password is
 correct. The warning identifies local versus remote WMI. For local WMI, check the
 actual IIS application pool/process identity; Windows does not allow alternate
-credentials for local WMI connections. For remote WMI, check the configured account
+credentials for local WMI connections. Locality is determined per actual target
+IP, not by the inventory hostname. If `0x80041064` persists, review the sanitized
+locality check and application version with the administrator. For remote WMI, check the configured account
 format and the account's approved DCOM and `root\cimv2` remote WMI permissions with
 the server administrator. Compare under the deployed host identity, not just a
 logged-in administrator session. Do not weaken UAC, DCOM security or firewall policy

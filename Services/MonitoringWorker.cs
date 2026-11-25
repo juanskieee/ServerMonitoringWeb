@@ -120,18 +120,38 @@ public sealed class MonitoringWorker(
             },
             async (server, cancellation) =>
             {
+                var operation = collectDetails
+                    ? "Read latest results (storage)"
+                    : "Ping collection";
+
                 try
                 {
                     if (collectDetails)
                     {
-                        await CollectMetricsAsync(
+                        var currentSnapshot = store.ReadLatest([server])[0];
+
+                        operation = "Metrics collection";
+                        var metrics = await collector.CollectMetricsAsync(
                             server,
+                            currentSnapshot.IpAddress,
+                            cancellation);
+
+                        operation = "Save metrics results (storage)";
+                        await store.SaveMetricsAsync(
+                            server,
+                            metrics,
                             cancellation);
                     }
                     else
                     {
-                        await CollectPingAsync(
+                        var pingResult = await collector.PingAsync(
                             server,
+                            cancellation);
+
+                        operation = "Save ping results (storage)";
+                        await store.SavePingAsync(
+                            server,
+                            pingResult,
                             cancellation);
                     }
                 }
@@ -143,49 +163,15 @@ public sealed class MonitoringWorker(
                 catch (Exception ex)
                 {
                     logger.LogError(
-                        "{ServerId}: {Check} failed: {Error}",
+                        "{ServerId}: {Operation} failed: {Error} ({ExceptionType}, 0x{ErrorCode:X8})",
                         server.Id,
-                        collectDetails
-                            ? "Details"
-                            : "Ping",
+                        operation,
                         CollectionFailure.Message(
                             ex,
-                            server.Password));
+                            server.Password),
+                        ex.GetType().Name,
+                        unchecked((uint)ex.HResult));
                 }
             });
-    }
-
-    private async Task CollectPingAsync(
-        ServerDefinition server,
-        CancellationToken cancellationToken)
-    {
-        var pingResult =
-            await collector.PingAsync(
-                server,
-                cancellationToken);
-
-        await store.SavePingAsync(
-            server,
-            pingResult,
-            cancellationToken);
-    }
-
-    private async Task CollectMetricsAsync(
-        ServerDefinition server,
-        CancellationToken cancellationToken)
-    {
-        var currentSnapshot =
-            store.ReadLatest([server])[0];
-
-        var metrics =
-            await collector.CollectMetricsAsync(
-                server,
-                currentSnapshot.IpAddress,
-                cancellationToken);
-
-        await store.SaveMetricsAsync(
-            server,
-            metrics,
-            cancellationToken);
     }
 }

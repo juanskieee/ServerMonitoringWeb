@@ -51,9 +51,9 @@ Grant the actual application identity read access to the inventory and Modify ac
 | Symptom | Check |
 | --- | --- |
 | IIS HTTP 500.30 | Inspect ASP.NET Core Module startup logs, hosting prerequisites and application identity permissions. |
-| Ping failed: access to path denied | Check storage access; saving ping results is part of the ping operation. |
+| Save ping results (storage) failed | Inspect existing storage access and the logged exception type/HRESULT. This is not evidence of failed ICMP. |
 | WMI `0x80070005` / `0x80041003` | Verify approved DCOM and WMI namespace permissions, not just the password. |
-| WMI `0x80041064` | Verify whether the target is the monitoring host. Set its inventory `ComputerName` to the actual Windows machine name; local WMI uses the process identity. |
+| WMI `0x80041064` | Verify the actual selected IP and deployed version; local IPs use the process identity without alternate credentials. |
 
 See [Operations](Documentation/OPERATIONS.MD) for the complete deployment, configuration and troubleshooting instructions. Do not weaken security policy or publish credentials, private infrastructure details or raw production logs.
 

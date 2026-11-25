@@ -51,6 +51,9 @@ internal static class CollectionFailure
             0x80041003 =>
                 "WMI access denied. Check WMI/DCOM permissions.",
 
+            0x80041064 =>
+                "WMI rejected explicit credentials for a local connection. Check target address identification.",
+
             0x800706BA =>
                 "RPC server unavailable. Check the address, firewall, and target availability.",
 
