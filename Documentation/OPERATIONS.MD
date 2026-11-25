@@ -35,19 +35,47 @@ Do not enable `DesktopMode` in IIS or unattended deployments.
 
 ## IIS Deployment
 
-Configure:
+For continuous monitoring, the administrator must configure a **dedicated** application
+pool for this application, rather than changing the shared DefaultAppPool. ASP.NET Core
+in-process apps cannot share a worker process with other in-process ASP.NET Core apps.
+Verify the actual hosting model and Hosting Bundle, then configure the dedicated pool's
+AlwaysRunning start mode, application preload (Application Initialization), and idle
+timeout of zero where approved. These are administrator-owned changes, not diagnostic
+commands. See [Microsoft IIS hosting guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/?view=aspnetcore-8.0).
 
-- AlwaysRunning
-- Application preload
-- Appropriate idle timeout settings
+The background worker runs only while the IIS application host is alive. A standalone
+EXE showing a localhost listener is not evidence that IIS has started its own worker.
+Startup logs now identify the server implementation, process ID, interactivity and
+desktop mode. An old snapshot can remain readable even when collection stops.
 
 Grant the application identity:
 
 - Read access to inventory files
 - Write access to the configured data directory
 
-Run only one application instance per data root. Stop the standalone EXE before
-starting IIS against the same data root.
+Run only one application instance per data root. Do not start a standalone EXE alongside
+the IIS application. Have the administrator arrange the transition during an approved
+maintenance window.
+
+### Stage and deploy without overwriting running binaries
+
+The Visual Studio FolderProfile1 profile now publishes to the local repository
+`artifacts/iis-publish` directory, rather than the live share. Publishing to this
+profile alone does not deploy anything. Use a clean local staging directory; the profile does not delete
+existing files. Verify the destination is local before publishing. The build excludes
+monitoring Logs from output and publish excludes servers.json.
+
+For an approved deployment, back up the application and preserve the deployed inventory
+and monitoring data. The administrator can use the application-specific IIS
+`app_offline.htm` procedure to stop only this application, wait for its processes and
+files to be released, copy the staged application files without deleting inventory or
+logs, and remove the offline file to restart the application. A manually launched EXE
+must be stopped separately by its authorized operator; the offline file cannot stop it.
+If files remain locked, stop deployment and investigate rather than killing shared IIS
+processes or forcing a copy. A partially copied release is not a reliable deployment.
+Build and stage on the development machine; validate that the staging output contains
+neither servers.json nor Logs before the approved deployment. Do not run IISReset or recycle a shared pool.
+See [Microsoft app_offline guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/app-offline?view=aspnetcore-8.0).
 
 If IIS returns HTTP 500.30, check the Windows Application event log and temporarily
 enable ASP.NET Core Module stdout logging in the published `web.config`. Ensure
@@ -63,7 +91,7 @@ startup exception (redact sensitive information).
 
 ## Data Storage
 
-Deployment output contains the inventory file.
+Deployment output does not contain the private inventory or monitoring Logs. Provide the inventory separately on a new installation.
 
 Preserve:
 
@@ -252,7 +280,10 @@ locality check and application version with the administrator. For remote WMI, c
 format and the account's approved DCOM and `root\cimv2` remote WMI permissions with
 the server administrator. Compare under the deployed host identity, not just a
 logged-in administrator session. Do not weaken UAC, DCOM security or firewall policy
-or grant broad administrator privileges to suppress the error. If access still fails,
+or grant broad administrator privileges to suppress the error. A successful laptop
+connection does not establish that the same target permits WMI from the production
+host. Ask the administrator to compare existing DCOM/WMI security events on source
+and target; do not run additional remote probes on live production without approval. If access still fails,
 provide the sanitized warning and relevant Windows event details.
 
 ## IP Order
@@ -563,7 +594,7 @@ Additional notes:
 
 - Metrics failures do not affect connectivity.
 - Metrics failures do not trigger audio.
-- Collection-warning and stale-metrics notes are hidden.
+- Per-card collection warnings remain hidden. A shared notice warns when saved ping or resource data may be stale.
 - Failures remain available in logs.
 
 ---
@@ -582,7 +613,7 @@ Removed features:
 
 - Bandwidth monitoring
 - Last Checked display
-- Stale metrics indicators
+- Per-card stale metrics indicators (a shared freshness notice is used instead)
 
 ## Disk Display
 

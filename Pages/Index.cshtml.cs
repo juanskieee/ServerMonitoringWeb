@@ -18,6 +18,9 @@ public sealed class IndexModel(
     public string? StorageError =>
         snapshots.StorageError;
 
+    public string? FreshnessWarning =>
+        snapshots.FreshnessWarning;
+
     public void OnGet()
     {
         LoadCards();
