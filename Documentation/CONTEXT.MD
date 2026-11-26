@@ -23,6 +23,10 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   transition. Browser launch and heartbeat-driven graceful shutdown remain explicit
   interactive desktop-only options. Startup logs distinguish the host and worker
   registration; service logs use Windows Event Log. IIS publishing stages locally.
+- One-shot WMI subprocesses exchange UTF-8 JSON through redirected standard streams
+  directly, without setting Windows console code pages. This supports detached
+  child processes and keeps credentials off the command line. Invalid/null input
+  returns a nonzero exit code before any collection.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.

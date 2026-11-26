@@ -126,6 +126,47 @@ timestamp alone may reflect pings; verify LastMetricsUtc advances for servers
 with authorized metrics as well. Do not close or restart production applications,
 run remote WMI tests or change permissions for this checklist.
 
+## 8. Headless subprocess smoke test — development laptop only
+
+Do not execute this on production. Build the solution on a development Windows
+machine, then run from the repository root. The subprocess receives null JSON
+and exits before WMI, inventory access, or either monitoring loop; it exercises
+the redirected input path without an attached console. It does not test service
+installation or actual metrics collection.
+
+```powershell
+dotnet build .\ServerMonitoringWeb.sln
+if ($LASTEXITCODE -ne 0) { throw 'Build failed; do not continue.' }
+
+$exe = (Resolve-Path .\bin\Debug\net8.0\ServerMonitoringWeb.exe).Path
+$start = New-Object System.Diagnostics.ProcessStartInfo
+$start.FileName = $exe
+$start.Arguments = '--collect-once 127.0.0.1'
+$start.UseShellExecute = $false
+$start.CreateNoWindow = $true
+$start.RedirectStandardInput = $true
+$start.RedirectStandardOutput = $true
+$start.RedirectStandardError = $true
+$process = [System.Diagnostics.Process]::Start($start)
+try {
+    $process.StandardInput.Write('null')
+    $process.StandardInput.Close()
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit(10000)) {
+        $process.Kill()  # Only the dedicated local smoke-test child.
+        throw 'Collector smoke test timed out.'
+    }
+    if ($process.ExitCode -ne 1 -or
+        $stdout.Result.Length -ne 0 -or $stderr.Result.Length -ne 0) {
+        throw 'Collector smoke test failed.'
+    }
+    Write-Output 'PASS: headless collector rejected null input without a console error.'
+} finally {
+    $process.Dispose()
+}
+```
+
 ## Report only sanitized results
 
 Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, account names, credentials, IP addresses or raw ACLs to a public repository. Use an approved internal channel for sensitive evidence. Redact previously posted sensitive information and notify the appropriate administrator in accordance with company policy.

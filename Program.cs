@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.Hosting.WindowsServices;
@@ -17,9 +16,9 @@ if (!OperatingSystem.IsWindows())
 
 // Collector mode is launched by CollectorProcess.
 // It performs one WMI collection and exits.
-if (await TryRunCollectorModeAsync(args))
+if (args.FirstOrDefault() == "--collect-once")
 {
-    return 0;
+    return await RunCollectorModeAsync(args);
 }
 
 // Service mode starts only the collector, not an HTTP server.
@@ -128,40 +127,30 @@ app.Run();
 
 return 0;
 
-static async Task<bool> TryRunCollectorModeAsync(
-    string[] args)
+static async Task<int> RunCollectorModeAsync(string[] args)
 {
-    if (args.Length != 2 ||
-        args[0] != "--collect-once")
+    if (args.Length != 2)
     {
-        return false;
+        return 1;
     }
 
-    Console.InputEncoding = Encoding.UTF8;
-    Console.OutputEncoding = Encoding.UTF8;
-
-    var input =
-        await Console.In.ReadToEndAsync();
-
-    var server =
-        JsonSerializer.Deserialize<ServerDefinition>(
-            input);
+    // CollectorProcess redirects stdin/stdout as UTF-8 pipes. Do not change
+    // console code pages: a headless IIS or service child has no console.
+    using var input = Console.OpenStandardInput();
+    var server = await JsonSerializer.DeserializeAsync<ServerDefinition>(input);
 
     if (server is null)
     {
-        Environment.ExitCode = 1;
-        return true;
+        return 1;
     }
 
-    var metrics =
-        WmiCollector.Collect(
-            server,
-            args[1]);
+    var metrics = WmiCollector.Collect(server, args[1]);
 
-    Console.WriteLine(
-        JsonSerializer.Serialize(metrics));
+    using var output = Console.OpenStandardOutput();
+    await JsonSerializer.SerializeAsync(output, metrics);
+    await output.FlushAsync();
 
-    return true;
+    return 0;
 }
 
 static async Task<int> RunWorkerServiceAsync(string[] args)

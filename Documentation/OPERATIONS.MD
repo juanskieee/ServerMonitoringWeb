@@ -73,6 +73,9 @@ not production diagnostic tests. Do not reconfigure or recycle a shared IIS pool
    without an interactive EXE or browser. If validation fails, stop the new
    service before restoring the previous application/configuration.
 
+The one-shot collector uses UTF-8 redirected pipes without changing console code
+pages, so it does not require an attached console even in combined IIS mode.
+
 The exclusive collector.lock handle prevents concurrent upgraded workers using
 the same local DataRoot; never delete it while collecting. It does not coordinate
 older builds or external writers. Use a dedicated IIS pool where the hosting
