@@ -1,6 +1,6 @@
 # Running and Configuring the Monitor
 
-Updated: November 19, 2026 (Asia/Taipei).
+Updated: November 26, 2026 (Asia/Taipei).
 
 See `CONTEXT.MD` for implementation details and known limitations.
 See `AGENTS.md` for development rules and project constraints.
@@ -21,7 +21,10 @@ The application hosts both:
 - Razor Pages dashboard
 - Monitoring worker
 
-Stopping or recycling the application stops monitoring.
+Stopping or recycling the application stops monitoring. Opening or closing a browser
+does not control the worker. The application does not automatically launch a browser;
+IIS hosts the dashboard and worker together. Visual Studio may still open a browser
+when debugging or publishing, according to its existing profile settings.
 
 ## IIS Deployment
 
