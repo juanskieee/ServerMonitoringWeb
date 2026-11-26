@@ -1,6 +1,6 @@
 # Project Context
 
-Updated: November 19, 2026 (Asia/Taipei).
+Updated: November 26, 2026 (Asia/Taipei).
 
 See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubleshooting. This document describes the current implementation and serves as the primary technical reference.
 
@@ -10,6 +10,8 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 
 - One Windows .NET 8 application hosts both Razor Pages and the monitoring worker.
   Stopping or recycling the application stops monitoring; closing the browser does not.
+  The host does not launch a browser or depend on browser heartbeats. The internal
+  one-shot WMI collector and its separate metrics timeout remain unchanged.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.

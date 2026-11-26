@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using ServerMonitoringWeb.Models;
@@ -32,8 +31,6 @@ RegisterServices(
 
 var app = builder.Build();
 
-DateTime lastHeartbeat = DateTime.UtcNow;
-
 app.Logger.LogInformation(
     "Inventory: {Inventory}",
     paths.Inventory);
@@ -51,55 +48,6 @@ app.Logger.LogInformation(
     paths.HistoryDirectory);
 
 ConfigurePipeline(app);
-
-// Browser heartbeat endpoint
-app.MapPost("/heartbeat", () =>
-{
-    lastHeartbeat = DateTime.UtcNow;
-    return Results.Ok();
-});
-
-// Open browser automatically
-if (!app.Environment.IsDevelopment())
-{
-    app.Lifetime.ApplicationStarted.Register(() =>
-    {
-        Task.Run(async () =>
-        {
-            try
-            {
-                await Task.Delay(1500);
-
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments =
-                        "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                });
-            }
-            catch
-            {
-            }
-        });
-    });
-}
-
-// Shutdown when browser stops sending heartbeats
-Task task = Task.Run(async () =>
-{
-    while (true)
-    {
-        await Task.Delay(10000);
-
-        if (DateTime.UtcNow - lastHeartbeat >
-            TimeSpan.FromSeconds(20))
-        {
-            Environment.Exit(0);
-        }
-    }
-});
 
 app.Run();
 
@@ -198,9 +146,6 @@ static void ConfigurePipeline(
         app.UseExceptionHandler("/Error");
         app.UseHsts();
     }
-
-    // Disabled for EXE deployment
-    // app.UseHttpsRedirection();
 
     app.UseStaticFiles();
 
