@@ -1,6 +1,6 @@
 # Server Monitoring Web
 
-A Windows-based ASP.NET Core Razor Pages application for monitoring server reachability and resource utilization. It modernizes the legacy Windows Forms ping checker while keeping monitoring and the dashboard in a single .NET 8 application.
+A Windows-based ASP.NET Core Razor Pages application for monitoring server reachability and resource utilization. It modernizes the legacy Windows Forms ping checker using the same .NET 8 build for the dashboard and monitoring worker.
 
 ## Features
 
@@ -9,7 +9,7 @@ A Windows-based ASP.NET Core Razor Pages application for monitoring server reach
 - Independent background ping and metrics cycles.
 - Dashboard with light/dark themes, automatic refresh, and connectivity warning audio.
 - Latest results in JSON and outage/recovery history in daily CSV files.
-- IIS hosting and optional interactive desktop EXE mode.
+- Independent Windows Service monitoring, IIS dashboard-only hosting, and combined development/desktop mode.
 
 ## Requirements
 
@@ -29,11 +29,11 @@ dotnet build .\ServerMonitoringWeb.sln
 dotnet run --project .\ServerMonitoringWeb.csproj --no-build --launch-profile http
 ```
 
-Open the address reported by the application. Closing the browser does not stop monitoring in default server mode. The monitoring worker runs only while the application is running.
+Open the address reported by the application. Closing the browser does not stop monitoring in combined mode, but stopping the host does. Production can use the independent Windows Service.
 
 ## Deployment and data
 
-Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Configure a dedicated IIS application pool for continuous operation; do not enable desktop mode in IIS or run a standalone EXE alongside IIS against the same data directory.
+Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Use the [administrator-approved Windows Service migration](Documentation/OPERATIONS.MD#production-windows-service--iis-dashboard): the service collects independently, and IIS uses Monitoring:RunWorker=false. Keep service binaries separate from the IIS deployment. Do not run a second collector against the same data directory. Service installation is not automatic.
 
 Preserve the deployed `servers.json` and existing `Logs` directory. The default data directory is `Logs` beside the application; `Monitoring:DataRoot` can override it with an absolute local path.
 
@@ -44,7 +44,7 @@ Preserve the deployed `servers.json` and existing `Logs` directory. The default 
 | `Logs/latest.json` | Latest monitoring snapshots and recent ping entries |
 | `Logs/History/` | Daily outage/recovery CSV files |
 
-Grant the actual application identity read access to the inventory and Modify access to the data directory only. The repository does not contain the deployed inventory. Keep it outside the publicly served `wwwroot` directory and protect it with appropriate filesystem ACLs.
+Grant the worker identity read access to the inventory and Modify access to the data directory only. Dashboard-only IIS requires read access. The repository does not contain the deployed inventory. Keep it outside the publicly served `wwwroot` directory and protect it with appropriate filesystem ACLs.
 
 ## Troubleshooting
 
