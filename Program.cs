@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.Extensions.Hosting.WindowsServices;
+using Microsoft.Extensions.Logging.EventLog;
 using ServerMonitoringWeb.Models;
 using ServerMonitoringWeb.Services;
 
@@ -20,16 +22,29 @@ if (await TryRunCollectorModeAsync(args))
     return 0;
 }
 
+// Service mode starts only the collector, not an HTTP server.
+if (args.FirstOrDefault() == "--worker-service")
+{
+    return await RunWorkerServiceAsync(args);
+}
+
 var builder = WebApplication.CreateBuilder(args);
+var options = BuildMonitoringOptions(builder.Configuration);
+var paths = CreateDataPaths(builder.Configuration, builder.Environment.ContentRootPath);
 
-var options = BuildMonitoringOptions(builder);
+// Keep combined mode for existing deployments and development until the
+// administrator explicitly switches IIS to dashboard-only mode.
+var runWorker = builder.Configuration.GetValue("Monitoring:RunWorker", true);
 
-var paths = CreateDataPaths(builder);
+RegisterStorage(builder.Services, options, paths);
+if (runWorker)
+{
+    RegisterWorker(builder.Services);
+}
 
-RegisterServices(
-    builder.Services,
-    options,
-    paths);
+builder.Services.AddScoped<MonitoringConfiguration>();
+builder.Services.AddScoped<SnapshotStore>();
+builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
@@ -39,27 +54,14 @@ var desktopMode = app.Configuration.GetValue<bool>("DesktopMode") &&
 
 
 app.Logger.LogInformation(
-    "Host: {ServerType}; Process ID: {ProcessId}; Interactive: {Interactive}; Desktop mode: {DesktopMode}",
+    "Host: {ServerType}; Process ID: {ProcessId}; Interactive: {Interactive}; Desktop mode: {DesktopMode}; Monitoring worker: {RunWorker}",
     app.Services.GetRequiredService<IServer>().GetType().Name,
     Environment.ProcessId,
     Environment.UserInteractive,
-    desktopMode);
+    desktopMode,
+    runWorker);
 
-app.Logger.LogInformation(
-    "Inventory: {Inventory}",
-    paths.Inventory);
-
-app.Logger.LogInformation(
-    "Data Directory: {DataDirectory}",
-    paths.DataDirectory);
-
-app.Logger.LogInformation(
-    "Latest Results: {LatestResults}",
-    paths.LatestResults);
-
-app.Logger.LogInformation(
-    "History Directory: {HistoryDirectory}",
-    paths.HistoryDirectory);
+LogPaths(app.Logger, paths);
 
 ConfigurePipeline(app);
 
@@ -162,13 +164,69 @@ static async Task<bool> TryRunCollectorModeAsync(
     return true;
 }
 
+static async Task<int> RunWorkerServiceAsync(string[] args)
+{
+    if (args.Length != 2 ||
+        !Path.IsPathFullyQualified(args[1]) ||
+        args[1].StartsWith(@"\\", StringComparison.Ordinal))
+    {
+        Console.Error.WriteLine("Worker service requires one absolute local application content root.");
+        return 1;
+    }
+
+    if (!WindowsServiceHelpers.IsWindowsService())
+    {
+        Console.Error.WriteLine("Start worker-service mode through the Windows Service Control Manager only.");
+        return 1;
+    }
+
+    // Use the dashboard's explicit content root even when the service binaries
+    // are installed in a different directory.
+    var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+    {
+        Args = [],
+        EnvironmentName = Environments.Production,
+        ContentRootPath = Path.GetFullPath(args[1])
+    });
+
+    builder.Services.AddWindowsService(options =>
+    {
+        options.ServiceName = "ServerMonitoringWorker";
+    });
+
+    builder.Logging.AddFilter<EventLogLoggerProvider>("ServerMonitoringWeb", LogLevel.Information);
+
+    var options = BuildMonitoringOptions(builder.Configuration);
+    var paths = CreateDataPaths(builder.Configuration, builder.Environment.ContentRootPath);
+    RegisterStorage(builder.Services, options, paths);
+    RegisterWorker(builder.Services);
+
+    using var host = builder.Build();
+    var logger = host.Services.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("ServerMonitoringWeb.WorkerService");
+
+    logger.LogInformation("Windows monitoring service; Process ID: {ProcessId}", Environment.ProcessId);
+    LogPaths(logger, paths);
+
+    await host.RunAsync();
+    return 0;
+}
+
+static void LogPaths(ILogger logger, DataPaths paths)
+{
+    logger.LogInformation("Inventory: {Inventory}", paths.Inventory);
+    logger.LogInformation("Data Directory: {DataDirectory}", paths.DataDirectory);
+    logger.LogInformation("Latest Results: {LatestResults}", paths.LatestResults);
+    logger.LogInformation("History Directory: {HistoryDirectory}", paths.HistoryDirectory);
+}
+
 static MonitoringOptions BuildMonitoringOptions(
-    WebApplicationBuilder builder)
+    IConfiguration configuration)
 {
     var options =
         new MonitoringOptions();
 
-    builder.Configuration
+    configuration
         .GetSection("Monitoring")
         .Bind(options);
 
@@ -181,14 +239,15 @@ static MonitoringOptions BuildMonitoringOptions(
 }
 
 static DataPaths CreateDataPaths(
-    WebApplicationBuilder builder)
+    IConfiguration configuration,
+    string contentRoot)
 {
     return new DataPaths(
-        builder.Configuration["Monitoring:DataRoot"],
-        builder.Environment.ContentRootPath);
+        configuration["Monitoring:DataRoot"],
+        contentRoot);
 }
 
-static void RegisterServices(
+static void RegisterStorage(
     IServiceCollection services,
     MonitoringOptions options,
     DataPaths paths)
@@ -197,18 +256,12 @@ static void RegisterServices(
     services.AddSingleton(options);
 
     services.AddSingleton<ResultStore>();
+}
+
+static void RegisterWorker(IServiceCollection services)
+{
     services.AddSingleton<ServerCollector>();
-
-    // Reload inventory data for each request so
-    // servers.json changes appear automatically.
-    services.AddScoped<MonitoringConfiguration>();
-
-    services.AddScoped<SnapshotStore>();
-
-    // Runs the background monitoring loops.
     services.AddHostedService<MonitoringWorker>();
-
-    services.AddRazorPages();
 }
 
 static void ConfigurePipeline(

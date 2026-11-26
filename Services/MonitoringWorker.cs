@@ -15,6 +15,11 @@ public sealed class MonitoringWorker(
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
+        // Readers need no lease; every upgraded collector holds this exclusive
+        // handle until its monitoring loops stop.
+        Directory.CreateDirectory(paths.DataDirectory);
+        using var writerLease = AcquireWriterLease();
+
         store.Initialize();
 
         logger.LogInformation(
@@ -33,6 +38,23 @@ public sealed class MonitoringWorker(
             RunChecksAsync(
                 collectDetails: true,
                 stoppingToken));
+    }
+
+    private FileStream AcquireWriterLease()
+    {
+        var lockPath = Path.Combine(paths.DataDirectory, "collector.lock");
+        try
+        {
+            // Do not delete the lock file. Its open handle establishes ownership.
+            return new FileStream(lockPath, FileMode.OpenOrCreate,
+                FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException ex)
+        {
+            throw new IOException(
+                "Cannot acquire the monitoring writer lease. Check for another collector or a storage error.",
+                ex);
+        }
     }
 
     private async Task RunChecksAsync(
