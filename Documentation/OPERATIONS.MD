@@ -1,6 +1,6 @@
 # Running and Configuring the Monitor
 
-Updated: November 25, 2026 (Asia/Taipei).
+Updated: November 26, 2026 (Asia/Taipei).
 
 See `CONTEXT.MD` for implementation details and known limitations.
 See `AGENTS.md` for development rules and project constraints.
@@ -16,13 +16,9 @@ dotnet build .\ServerMonitoringWeb.sln --nologo -m:1 -p:UseSharedCompilation=fal
 dotnet run --project .\ServerMonitoringWeb.csproj --no-build --launch-profile http
 ```
 
-The application hosts both:
-
-- Razor Pages dashboard
-- Monitoring worker
-
-Stopping or recycling the application stops monitoring. In the default server mode,
-closing a browser does not stop the worker. No browser is launched by the server.
+Combined mode runs Razor Pages and the monitoring worker together. Stopping the
+host stops collection. This remains the default for compatibility and development,
+but is not the recommended production topology.
 
 For the optional interactive desktop EXE behavior only, launch from an interactive Windows session:
 
@@ -33,29 +29,55 @@ For the optional interactive desktop EXE behavior only, launch from an interacti
 This opens Edge and stops the host gracefully after browser heartbeats expire.
 Do not enable `DesktopMode` in IIS or unattended deployments.
 
-## IIS Deployment
+## Production: Windows Service + IIS dashboard
 
-For continuous monitoring, the administrator must configure a **dedicated** application
-pool for this application, rather than changing the shared DefaultAppPool. ASP.NET Core
-in-process apps cannot share a worker process with other in-process ASP.NET Core apps.
-Verify the actual hosting model and Hosting Bundle, then configure the dedicated pool's
-AlwaysRunning start mode, application preload (Application Initialization), and idle
-timeout of zero where approved. These are administrator-owned changes, not diagnostic
-commands. See [Microsoft IIS hosting guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/?view=aspnetcore-8.0).
+The collector runs as an independent Windows Service named
+`ServerMonitoringWorker`. IIS serves the dashboard and reads saved results.
+The same .NET 8 build supplies both roles. No service is installed automatically.
 
-The background worker runs only while the IIS application host is alive. A standalone
-EXE showing a localhost listener is not evidence that IIS has started its own worker.
-Startup logs now identify the server implementation, process ID, interactivity and
-desktop mode. An old snapshot can remain readable even when collection stops.
+### Administrator-approved transition
 
-Grant the application identity:
+Use a maintenance window and documented rollback. These are deployment steps,
+not production diagnostic tests. Do not reconfigure or recycle a shared IIS pool.
 
-- Read access to inventory files
-- Write access to the configured data directory
+1. Build and stage the release on the development machine. Keep web and service
+   binaries in separate protected local installation directories; preserve the
+   single existing inventory and results directory.
+2. Back up the deployment and configuration. Have the authorized operator stop
+   the manually launched EXE and take only the old monitoring web application
+   offline. Older binaries do not honor the writer lease.
+3. Deploy the updated dashboard. In its deployed appsettings.json, set
+   `Monitoring:RunWorker` to `false` (or use an app-specific IIS environment
+   override). Preserve other settings. Do not disable collection before the
+   replacement service is ready.
+4. Install the staged multi-file EXE as Windows Service `ServerMonitoringWorker`
+   under an approved least-privilege service account and configure automatic
+   startup. The service image path must include the absolute local IIS content root.
+   Illustrative service image path (not a command to execute):
 
-Run only one application instance per data root. Do not start a standalone EXE alongside
-the IIS application. Have the administrator arrange the transition during an approved
-maintenance window.
+   ```text
+   "C:\Services\ServerMonitoringWorker\ServerMonitoringWeb.exe" --worker-service "C:\inetpub\wwwroot\ServerMonitoringWeb"
+   ```
+
+   Adjust paths to the actual approved installation. Keep the EXE, DLL and
+   dependent files together; verify the .NET 8 runtime. Do not select an elevated
+   account to bypass WMI permissions. See [Microsoft Windows Service hosting](https://learn.microsoft.com/en-us/dotnet/core/extensions/windows-service?pivots=dotnet-8-0).
+5. Service account: read configuration/inventory, Modify access to DataRoot,
+   and approved WMI authorization. Dashboard-only IIS: read inventory/results.
+   Both roles must resolve the same DataRoot; avoid conflicting environment
+   overrides. Configure Event Log source access and service recovery under
+   administrator policy. Service mode ignores RunWorker and always collects.
+6. Start the service and restore the dashboard through the approved procedure.
+   Verify exactly one writer, service running, dashboard logs show
+   `Monitoring worker: False`, and ping and usable metrics timestamps advance
+   without an interactive EXE or browser. If validation fails, stop the new
+   service before restoring the previous application/configuration.
+
+The exclusive collector.lock handle prevents concurrent upgraded workers using
+the same local DataRoot; never delete it while collecting. It does not coordinate
+older builds or external writers. Use a dedicated IIS pool where the hosting
+model requires one; the independent service does not need IIS AlwaysRunning or
+idle-timeout changes for collection.
 
 ### Stage and deploy without overwriting running binaries
 
@@ -65,8 +87,9 @@ profile alone does not deploy anything. Use a clean local staging directory; the
 existing files. Verify the destination is local before publishing. The build excludes
 monitoring Logs from output and publish excludes servers.json.
 
-For an approved deployment, back up the application and preserve the deployed inventory
-and monitoring data. The administrator can use the application-specific IIS
+For an approved dashboard deployment, back up the application and preserve the deployed inventory
+and monitoring data. Updates to the separate service binaries require stopping only the dedicated
+monitoring service through the approved maintenance procedure. The administrator can use the application-specific IIS
 `app_offline.htm` procedure to stop only this application, wait for its processes and
 files to be released, copy the staged application files without deleting inventory or
 logs, and remove the offline file to restart the application. A manually launched EXE
@@ -82,12 +105,12 @@ enable ASP.NET Core Module stdout logging in the published `web.config`. Ensure
 its log directory is writable by the application pool identity; disable stdout logging
 after diagnosis. Confirm that the .NET 8 Hosting Bundle/ASP.NET Core Module is installed,
 that the published application matches the configured hosting mode, and that the pool
-identity can read inventory and write monitoring data. A successful standalone launch
+identity can read inventory and monitoring data (write access is only required for a combined worker). A successful standalone launch
 is not proof that IIS can start under its different identity.
 
-After redeployment, verify the site stays running with all browsers closed for at
-least one minute, then reopen the dashboard. If 500.30 persists, capture the first
-startup exception (redact sensitive information).
+After the approved migration, verify that service collection continues without a manual EXE
+or browser. IIS availability is a separate check. If 500.30 persists, capture the first
+startup exception privately.
 
 ## Data Storage
 
@@ -112,7 +135,7 @@ With `Monitoring:DataRoot` omitted (the repository default), monitoring data is 
 ```
 
 The data directory and `History` are created automatically on startup, along with
-`latest.json` if it does not exist. Grant the application identity write access to `Logs`
+`latest.json` if it does not exist. Grant the worker identity write access to `Logs`
 and preserve it during deployments.
 
 For storage errors, review the operation label and exception type/HRESULT in the

@@ -109,6 +109,23 @@ alongside the IIS host. Check the existing logs for the new Host startup message
 the dashboard's freshness notice after approved deployment. The notice detects potentially
 old readings, not their root cause.
 
+## 7. Independent monitoring service (after approved installation only)
+
+These checks do not install, start, stop or configure a service. Do not launch
+the service EXE manually.
+
+```powershell
+Get-Service -Name ServerMonitoringWorker -ErrorAction SilentlyContinue |
+    Select-Object Status, StartType
+```
+
+Inspect existing authorized logs privately: service startup should be present,
+and the dashboard startup should show Monitoring worker: False. Observe the
+existing snapshot timestamps over multiple collection cycles. A changing file
+timestamp alone may reflect pings; verify LastMetricsUtc advances for servers
+with authorized metrics as well. Do not close or restart production applications,
+run remote WMI tests or change permissions for this checklist.
+
 ## Report only sanitized results
 
 Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, account names, credentials, IP addresses or raw ACLs to a public repository. Use an approved internal channel for sensitive evidence. Redact previously posted sensitive information and notify the appropriate administrator in accordance with company policy.
@@ -121,5 +138,8 @@ Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, a
 - [ ] srv05 LocalIPMatches: True / False / unknown.
 - [ ] Existing dashboard available: yes / no / unknown.
 - [ ] Existing error codes only, without sensitive details.
+- [ ] Windows service running: yes / no / unknown.
+- [ ] Dashboard worker disabled: yes / no / unknown.
+- [ ] Ping and authorized metrics timestamps advance without a manual EXE: yes / no / unknown.
 
 These commands were source-reviewed, not executed by the developer assistant on the production server. Even read-only inspection must comply with local access and change-management policies.

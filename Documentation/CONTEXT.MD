@@ -1,6 +1,6 @@
 # Project Context
 
-Updated: November 25, 2026 (Asia/Taipei).
+Updated: November 26, 2026 (Asia/Taipei).
 
 See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubleshooting. This document describes the current implementation and serves as the primary technical reference.
 
@@ -8,15 +8,21 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 
 # Application and Inventory
 
-- One Windows .NET 8 application hosts both Razor Pages and the monitoring worker.
-  Stopping or recycling the application stops monitoring; closing the browser does not
-  affect the default server mode. The worker lives inside its host process, not the
-  browser. IIS must start and keep its own host running; a manually launched EXE is
-  not a substitute. Startup logs identify the hosting server implementation, process
-  ID, interactivity and desktop mode. The IIS publish profile stages files locally
-  and does not overwrite live binaries. Browser launch, heartbeat endpoint and heartbeat-driven
-  graceful shutdown are enabled only with explicit `DesktopMode=true` on an interactive
-  Windows host. IIS must use the default mode.
+- The same Windows .NET 8 build supports combined dashboard/worker mode (default
+  for backward compatibility), dashboard-only mode (`Monitoring:RunWorker=false`),
+  and worker-only Windows Service mode (`--worker-service <content-root>`).
+  Service mode requires the Windows Service Control Manager, starts no HTTP server
+  or browser, and always enables MonitoringWorker under the configured service account.
+- Production should use IIS in dashboard-only mode and a separately installed,
+  automatically started Windows service named ServerMonitoringWorker. The service
+  binaries can live in a separate protected directory; the explicit local content
+  root points at the IIS application's configuration and inventory. Both hosts
+  must resolve the same DataRoot. Recycling IIS or closing a browser/terminal
+  does not stop the service. Installation/configuration require administrator approval.
+- Combined mode preserves development and legacy deployments until the approved
+  transition. Browser launch and heartbeat-driven graceful shutdown remain explicit
+  interactive desktop-only options. Startup logs distinguish the host and worker
+  registration; service logs use Windows Event Log. IIS publishing stages locally.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.
@@ -42,9 +48,10 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   The existing missing-credentials skip rule is unchanged.
 - Connection warnings identify the mode that failed, without disclosing credentials.
   Correct passwords alone do not establish WMI/DCOM authorization.
-- The deployed inventory is not available in Git. Issue #7 reported a local address
-  match with a hostname mismatch; the targeted fix was source-reviewed, but a .NET
-  build and approved deployment/runtime validation remain pending.
+- The deployed inventory is not available in Git. Issue #9 reported frozen readings
+  when the standalone EXE closes; service mode addresses that lifecycle dependency.
+  The source change still requires a .NET build and approved Windows service/IIS
+  validation. Remote WMI authorization remains a separate unresolved concern.
 
 - Inventory validation checks:
   - IDs
@@ -92,7 +99,9 @@ Default structure:
 - Startup logs report `Inventory`, `Data Directory`, `Latest Results`, and `History Directory` paths.
 - Each completed per-server ping or details result reads and rewrites the complete
   `latest.json` file through a same-directory temporary file and replacement move.
-  A process-local semaphore serializes snapshot/history writes.
+  A process-local semaphore serializes snapshot/history writes. Every upgraded worker
+  also holds an exclusive collector.lock handle in DataRoot for its lifetime before
+  initialization. Readers do not acquire it. The file remains; the handle establishes ownership.
 - Worker errors identify the failing stage (ping collection, metrics collection,
   storage read, save ping results or save metrics results) and exception type/HRESULT.
   Storage failures are not labeled as failed network pings. Storage behavior and
@@ -154,9 +163,9 @@ Default structure:
 - Removed server IDs are not pruned from `latest.json`; malformed results block
   subsequent updates until operator repair. CSV date retention has no byte quota
   and depends on completed ping cycles, valid inventory, and successful file deletion.
-- One application instance per data root is required operationally but not enforced.
-  The process-local lock and shared temporary filename do not protect concurrent
-  instances, including overlapping host lifetimes during deployment/recycling.
+- The writer lease excludes concurrent upgraded workers sharing the same local
+  data directory. Old binaries and external writers do not honor it and must be
+  excluded operationally. Dashboard-only hosts may read concurrently.
 - Dashboard access has no application-enforced authentication requirement. Production
   access control, HTTPS, private data paths, and inventory/deployment/backup ACLs must
   be supplied by the deployment. Plaintext inventory credentials are copied to
