@@ -59,11 +59,26 @@ collectors use UTF-8 pipes without requiring an attached console.
 
 ### Stage and deploy without overwriting running binaries
 
-The Visual Studio FolderProfile1 profile now publishes to the local repository
-`artifacts/iis-publish` directory, rather than the live share. Publishing to this
-profile alone does not deploy anything. Use a clean local staging directory; the profile does not delete
-existing files. Verify the destination is local before publishing. The build excludes
-monitoring Logs from output and publish excludes servers.json.
+Both checked-in folder profiles stage locally: FolderProfile1 is framework-dependent
+(`artifacts/iis-publish`), while FolderProfile is self-contained
+(`artifacts/iis-publish-selfcontained`). Destination deletion is disabled in both.
+The project rejects destructive cleanup, direct UNC publishing, and output outside
+the permitted project staging/build directories in the standard folder/CLI paths.
+If Visual Studio remembers an old network destination or deletion option, correct
+the publish profile; do not bypass the guard. Publish output is code only: it does
+not include servers.json or Logs.
+
+From the local development repository, stage a framework-dependent release with:
+
+```powershell
+dotnet publish .\ServerMonitoringWeb.csproj -c Release --self-contained false -o .\artifacts\iis-publish -p:DeleteExistingFiles=false
+```
+
+This command builds/stages only. Do not use a production folder as its output.
+Before any server copy, inspect the staging folder and ensure inventory and Logs
+are absent. The approved administrator must separately confirm the destination's
+original inventory and monitoring data are backed up, present and accessible.
+Never use a mirror/purge copy or delete the entire application directory.
 
 For an approved deployment, back up the application and preserve the deployed inventory
 and monitoring data. The administrator can use the application-specific IIS
@@ -88,6 +103,21 @@ is not proof that IIS can start under its different identity.
 After approved deployment, verify that IIS starts the worker and both ping
 and usable metrics timestamps advance without a manually launched EXE. If 500.30
 persists, capture the first startup exception privately.
+
+## Recover missing production inventory or Logs
+
+If the dashboard reports a missing servers.json or UnauthorizedAccessException
+(0x80070005) while initializing DataRoot, stop publishing directly to the server.
+Restore the authorized production inventory from an approved backup (never a sample
+or unverified laptop copy). Restore the existing Logs/History from backup where
+available; do not overwrite newer results or fabricate old history. If no Logs
+backup exists, the administrator may provision a fresh Logs directory after approval;
+old results cannot be recovered by creating it. The dedicated pool needs read
+access to inventory and Modify access only within DataRoot, with inheritance to
+its children. Do not grant write access to the application root or change shared
+pool settings. Verify effective access privately; no permission-changing command
+belongs in the diagnostic checklist. The running worker retries startup every
+15 seconds, so restoring access need not require a server-wide restart.
 
 ## Data Storage
 

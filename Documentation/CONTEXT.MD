@@ -62,7 +62,13 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - Unknown JSON properties
   - 1 MiB maximum file size
 
-- The local inventory is copied to build output for development only. Publish output excludes servers.json and monitoring Logs; provision and preserve them separately during deployment.
+- The local inventory is copied to build output for development only. Publish output
+  excludes servers.json and monitoring Logs; provision and preserve them separately.
+  Both checked-in folder profiles stage locally and disable destination deletion.
+  Project-level publish guards reject destructive cleanup, UNC paths, destinations
+  outside approved project output directories, and staging containing inventory or
+  Logs. These guards apply to standard VS folder and CLI publish targets; they do
+  not protect manual copies, other deployment tooling, or old builds.
 
 - `Models/Configurations.cs` contains `MonitoringOptions`, `MonitoringConfiguration`, and
   `InventoryConfiguration`. Path resolution is defined in `Services/DataPaths.cs`.

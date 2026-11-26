@@ -18,4 +18,40 @@
 		<Folder Include="Logs\" />
 	</ItemGroup>
 
+	<!-- Protect server-owned inventory/history from IDE profile overrides.
+	     VS folder publish and CLI publish use different copy/cleanup targets. -->
+	<Target Name="ValidateSafeFolderPublish"
+	        BeforeTargets="_DeleteDestinationFilesIfSpecified">
+		<Error Condition="'$(DeleteExistingFiles)' == 'true'"
+		       Text="Unsafe publish: disable Delete all existing files prior to publish. Publish to local staging only." />
+		<Error Condition="'$(PublishUrl)' == ''"
+		       Text="Unsafe publish: no folder publish destination was resolved." />
+		<PropertyGroup>
+			<_SafeFolderDestination>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(PublishUrl)'))</_SafeFolderDestination>
+		</PropertyGroup>
+		<Error Condition="$([System.String]::Copy('$(_SafeFolderDestination)').StartsWith('\\'))"
+		       Text="Unsafe publish: publishing directly to a network share is blocked. Use the local FolderProfile1 staging directory." />
+		<Error Condition="!$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'artifacts').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'bin').ToUpperInvariant())'))"
+		       Text="Unsafe publish: destination must be inside this project's local artifacts or bin directory. Do not publish over a deployed site." />
+		<Error Condition="Exists('$(_SafeFolderDestination)servers.json') Or Exists('$(_SafeFolderDestination)Logs')"
+		       Text="Unsafe publish: destination contains an inventory or Logs. Use a different clean local staging directory; do not delete those files." />
+	</Target>
+
+	<Target Name="ValidateSafeCliPublish"
+	        BeforeTargets="PrepareForPublish;_IncrementalCleanPublishDirectory">
+		<Error Condition="'$(DeleteExistingFiles)' == 'true'"
+		       Text="Unsafe publish: DeleteExistingFiles must be false." />
+		<Error Condition="'$(PublishDir)' == ''"
+		       Text="Unsafe publish: no publish directory was resolved." />
+		<PropertyGroup>
+			<_SafeCliDestination>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(PublishDir)'))</_SafeCliDestination>
+		</PropertyGroup>
+		<Error Condition="$([System.String]::Copy('$(_SafeCliDestination)').StartsWith('\\'))"
+		       Text="Unsafe publish: publishing directly to a network share is blocked." />
+		<Error Condition="!$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'artifacts').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'bin').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'obj').ToUpperInvariant())'))"
+		       Text="Unsafe publish: destination must be inside this project's local artifacts, bin or obj directory." />
+		<Error Condition="Exists('$(_SafeCliDestination)servers.json') Or Exists('$(_SafeCliDestination)Logs')"
+		       Text="Unsafe publish: destination contains an inventory or Logs. Select clean local staging instead." />
+	</Target>
+
 </Project>

@@ -18,7 +18,7 @@ Run in Windows PowerShell. Substitute the actual data directory reported by the 
 $root = 'C:\inetpub\wwwroot\ServerMonitoringWeb'
 $data = Join-Path $root 'Logs'
 
-foreach ($path in @($data, (Join-Path $data 'latest.json'), (Join-Path $data 'History'))) {
+foreach ($path in @((Join-Path $root 'servers.json'), $data, (Join-Path $data 'latest.json'), (Join-Path $data 'History'))) {
     if (Test-Path -LiteralPath $path) {
         Get-Item -LiteralPath $path |
             Select-Object Name, Attributes, LastWriteTime
@@ -30,6 +30,8 @@ foreach ($path in @($data, (Join-Path $data 'latest.json'), (Join-Path $data 'Hi
     }
 }
 ```
+
+If servers.json or Logs is missing, report only its missing/present status; do not publish again or create replacement data as a diagnostic. Recovery is an approved operation documented in OPERATIONS.MD.
 
 The filtered output shows only directly matching pool ACL entries, not effective permissions. Group membership, inherited rules and deny entries may also affect access. An absent matching entry does not prove a permission failure. Ask the administrator to review effective access if needed. No write probe is permitted.
 

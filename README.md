@@ -33,7 +33,7 @@ Open the address reported by the application. Closing the browser does not stop 
 
 ## Deployment and data
 
-Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Configure a dedicated IIS pool with automatic startup and preload as described in [Operations](Documentation/OPERATIONS.MD#production-one-iis-application). The dashboard and worker run together, without installing a separate Windows Service or launching the EXE manually. Only one collector may use the data directory.
+Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. Both checked-in profiles stage locally; destructive and direct network-share publishes are blocked by project guards. The staged output excludes the private inventory and monitoring Logs. Configure a dedicated IIS pool with automatic startup and preload as described in [Operations](Documentation/OPERATIONS.MD#production-one-iis-application). The dashboard and worker run together, without installing a separate Windows Service or launching the EXE manually. Only one collector may use the data directory.
 
 Preserve the deployed `servers.json` and existing `Logs` directory. The default data directory is `Logs` beside the application; `Monitoring:DataRoot` can override it with an absolute local path.
 
@@ -50,6 +50,7 @@ Grant the worker identity read access to the inventory and Modify access to the 
 
 | Symptom | Check |
 | --- | --- |
+| Missing servers.json / cannot initialize monitoring data directory | Stop publishing; restore the approved inventory and existing Logs from backup, and have the administrator review effective access for the dedicated pool. |
 | IIS HTTP 500.30 | Inspect ASP.NET Core Module startup logs, hosting prerequisites and application identity permissions. |
 | Save ping results (storage) failed | Inspect existing storage access and the logged exception type/HRESULT. This is not evidence of failed ICMP. |
 | WMI `0x80070005` / `0x80041003` | Verify approved DCOM and WMI namespace permissions, not just the password. |
