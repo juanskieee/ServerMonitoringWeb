@@ -11,16 +11,23 @@ public sealed class MonitoringWorker(
     : BackgroundService
 {
     private DateTime? _lastHistoryCleanupDate;
+    private volatile string? _startupWarning = "Monitoring worker is starting.";
+
+    public string? StartupWarning => _startupWarning;
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
-        // Readers need no lease; every upgraded collector holds this exclusive
-        // handle until its monitoring loops stop.
-        Directory.CreateDirectory(paths.DataDirectory);
-        using var writerLease = AcquireWriterLease();
+        // Let IIS start even if storage is temporarily inaccessible.
+        await Task.Yield();
 
-        store.Initialize();
+        using var writerLease = await InitializeStorageAsync(stoppingToken);
+        if (writerLease is null)
+        {
+            return;
+        }
+
+        _startupWarning = null;
 
         logger.LogInformation(
             "Monitoring {Inventory}: ping every {Ping}s, details every {Details}s.",
@@ -40,21 +47,42 @@ public sealed class MonitoringWorker(
                 stoppingToken));
     }
 
-    private FileStream AcquireWriterLease()
+    private async Task<FileStream?> InitializeStorageAsync(CancellationToken cancellationToken)
     {
-        var lockPath = Path.Combine(paths.DataDirectory, "collector.lock");
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            // Do not delete the lock file. Its open handle establishes ownership.
-            return new FileStream(lockPath, FileMode.OpenOrCreate,
-                FileAccess.ReadWrite, FileShare.None);
+            FileStream? lease = null;
+            var stage = "initialize monitoring data directory";
+
+            try
+            {
+                Directory.CreateDirectory(paths.DataDirectory);
+                stage = "acquire exclusive monitoring writer lease";
+                // Ownership is the open handle; do not delete the lock file.
+                lease = new FileStream(Path.Combine(paths.DataDirectory, "collector.lock"),
+                    FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+                stage = "initialize monitoring results";
+                store.Initialize();
+                return lease;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                lease?.Dispose();
+                _startupWarning = $"Monitoring cannot {stage} ({ex.GetType().Name}, 0x{unchecked((uint)ex.HResult):X8}). Check pool access or another collector. Retrying.";
+                logger.LogWarning(ex, "Monitoring startup failed at {Stage}; retrying in 15 seconds.", stage);
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
         }
-        catch (IOException ex)
-        {
-            throw new IOException(
-                "Cannot acquire the monitoring writer lease. Check for another collector or a storage error.",
-                ex);
-        }
+
+        return null;
     }
 
     private async Task RunChecksAsync(

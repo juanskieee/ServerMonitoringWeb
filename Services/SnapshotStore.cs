@@ -16,10 +16,13 @@ public sealed class SnapshotStore(
 
     public string? FreshnessWarning { get; private set; }
 
+    public string? MetricsWarning { get; private set; }
+
     public IReadOnlyList<ServerSnapshot> GetAll()
     {
         StorageError = null;
         FreshnessWarning = null;
+        MetricsWarning = null;
 
         try
         {
@@ -63,6 +66,32 @@ public sealed class SnapshotStore(
                     : stalePing
                         ? "Saved ping readings may be out of date. Check the monitoring host and storage."
                         : "Saved resource readings may be out of date. Check the monitoring host and metrics collection.";
+            }
+
+            // Only safe categories and counts; no raw WMI or inventory details.
+            var failed = snapshots.Where(snapshot =>
+                snapshot.IsOnline == true &&
+                snapshot.CpuPercent is null && snapshot.RamPercent is null &&
+                !snapshot.Disks.Any(disk => disk.UsedPercent is not null) &&
+                snapshot.CollectionWarning is { } warning &&
+                (warning.StartsWith("Local WMI", StringComparison.Ordinal) ||
+                 warning.StartsWith("Remote WMI", StringComparison.Ordinal) ||
+                 warning.StartsWith("WMI target identification", StringComparison.Ordinal) ||
+                 warning.StartsWith("Collector process:", StringComparison.Ordinal) ||
+                 warning.StartsWith("CPU:", StringComparison.Ordinal) ||
+                 warning.StartsWith("RAM:", StringComparison.Ordinal) ||
+                 warning.StartsWith("Disks:", StringComparison.Ordinal))).ToList();
+
+            if (failed.Count > 0)
+            {
+                var accessDenied = failed.Count(snapshot =>
+                    snapshot.CollectionWarning!.Contains("0x80070005", StringComparison.OrdinalIgnoreCase) ||
+                    snapshot.CollectionWarning!.Contains("0x80041003", StringComparison.OrdinalIgnoreCase));
+                MetricsWarning = $"Resource metrics unavailable for {failed.Count} online server(s). " +
+                    (accessDenied > 0
+                        ? $"WMI or collector access denied for {accessDenied}; check the approved IIS identity and target permissions. "
+                        : "") +
+                    "See application logs for collection details.";
             }
 
             return snapshots;
