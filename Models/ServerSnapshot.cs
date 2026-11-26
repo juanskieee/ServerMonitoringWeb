@@ -39,9 +39,6 @@ public sealed record ServerSnapshot
     // Timestamp of the most recent ping check.
     public DateTimeOffset? LastPingUtc { get; init; }
 
-    // Timestamp of the last collection that returned usable resource metrics.
-    public DateTimeOffset? LastMetricsUtc { get; init; }
-
     // Current pair of ping checks, newest first; resets before the next pair.
     public PingLogEntry[] PingLog { get; init; } = [];
 

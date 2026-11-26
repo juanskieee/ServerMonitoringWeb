@@ -11,23 +11,11 @@ public sealed class MonitoringWorker(
     : BackgroundService
 {
     private DateTime? _lastHistoryCleanupDate;
-    private volatile string? _startupWarning = "Monitoring worker is starting.";
-
-    public string? StartupWarning => _startupWarning;
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
-        // Let IIS start even if storage is temporarily inaccessible.
-        await Task.Yield();
-
-        using var writerLease = await InitializeStorageAsync(stoppingToken);
-        if (writerLease is null)
-        {
-            return;
-        }
-
-        _startupWarning = null;
+        store.Initialize();
 
         logger.LogInformation(
             "Monitoring {Inventory}: ping every {Ping}s, details every {Details}s.",
@@ -45,44 +33,6 @@ public sealed class MonitoringWorker(
             RunChecksAsync(
                 collectDetails: true,
                 stoppingToken));
-    }
-
-    private async Task<FileStream?> InitializeStorageAsync(CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            FileStream? lease = null;
-            var stage = "initialize monitoring data directory";
-
-            try
-            {
-                Directory.CreateDirectory(paths.DataDirectory);
-                stage = "acquire exclusive monitoring writer lease";
-                // Ownership is the open handle; do not delete the lock file.
-                lease = new FileStream(Path.Combine(paths.DataDirectory, "collector.lock"),
-                    FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-                stage = "initialize monitoring results";
-                store.Initialize();
-                return lease;
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                lease?.Dispose();
-                _startupWarning = $"Monitoring cannot {stage} ({ex.GetType().Name}, 0x{unchecked((uint)ex.HResult):X8}). Check pool access or another collector. Retrying.";
-                logger.LogWarning(ex, "Monitoring startup failed at {Stage}; retrying in 15 seconds.", stage);
-            }
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                return null;
-            }
-        }
-
-        return null;
     }
 
     private async Task RunChecksAsync(
@@ -170,38 +120,18 @@ public sealed class MonitoringWorker(
             },
             async (server, cancellation) =>
             {
-                var operation = collectDetails
-                    ? "Read latest results (storage)"
-                    : "Ping collection";
-
                 try
                 {
                     if (collectDetails)
                     {
-                        var currentSnapshot = store.ReadLatest([server])[0];
-
-                        operation = "Metrics collection";
-                        var metrics = await collector.CollectMetricsAsync(
+                        await CollectMetricsAsync(
                             server,
-                            currentSnapshot.IpAddress,
-                            cancellation);
-
-                        operation = "Save metrics results (storage)";
-                        await store.SaveMetricsAsync(
-                            server,
-                            metrics,
                             cancellation);
                     }
                     else
                     {
-                        var pingResult = await collector.PingAsync(
+                        await CollectPingAsync(
                             server,
-                            cancellation);
-
-                        operation = "Save ping results (storage)";
-                        await store.SavePingAsync(
-                            server,
-                            pingResult,
                             cancellation);
                     }
                 }
@@ -213,15 +143,49 @@ public sealed class MonitoringWorker(
                 catch (Exception ex)
                 {
                     logger.LogError(
-                        "{ServerId}: {Operation} failed: {Error} ({ExceptionType}, 0x{ErrorCode:X8})",
+                        "{ServerId}: {Check} failed: {Error}",
                         server.Id,
-                        operation,
+                        collectDetails
+                            ? "Details"
+                            : "Ping",
                         CollectionFailure.Message(
                             ex,
-                            server.Password),
-                        ex.GetType().Name,
-                        unchecked((uint)ex.HResult));
+                            server.Password));
                 }
             });
+    }
+
+    private async Task CollectPingAsync(
+        ServerDefinition server,
+        CancellationToken cancellationToken)
+    {
+        var pingResult =
+            await collector.PingAsync(
+                server,
+                cancellationToken);
+
+        await store.SavePingAsync(
+            server,
+            pingResult,
+            cancellationToken);
+    }
+
+    private async Task CollectMetricsAsync(
+        ServerDefinition server,
+        CancellationToken cancellationToken)
+    {
+        var currentSnapshot =
+            store.ReadLatest([server])[0];
+
+        var metrics =
+            await collector.CollectMetricsAsync(
+                server,
+                currentSnapshot.IpAddress,
+                cancellationToken);
+
+        await store.SaveMetricsAsync(
+            server,
+            metrics,
+            cancellationToken);
     }
 }

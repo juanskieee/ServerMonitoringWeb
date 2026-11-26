@@ -1,6 +1,6 @@
 # Running and Configuring the Monitor
 
-Updated: November 26, 2026 (Asia/Taipei).
+Updated: November 19, 2026 (Asia/Taipei).
 
 See `CONTEXT.MD` for implementation details and known limitations.
 See `AGENTS.md` for development rules and project constraints.
@@ -16,112 +16,31 @@ dotnet build .\ServerMonitoringWeb.sln --nologo -m:1 -p:UseSharedCompilation=fal
 dotnet run --project .\ServerMonitoringWeb.csproj --no-build --launch-profile http
 ```
 
-The application runs Razor Pages and the monitoring worker together. Stopping
-the host stops collection; closing the browser does not stop normal monitoring.
-Production hosts the entire application in IIS.
+The application hosts both:
 
-For the optional interactive desktop EXE behavior only, launch from an interactive Windows session:
+- Razor Pages dashboard
+- Monitoring worker
 
-```powershell
-.\ServerMonitoringWeb.exe --DesktopMode=true --urls http://localhost:5000
-```
+Stopping or recycling the application stops monitoring.
 
-This opens Edge and stops the host gracefully after browser heartbeats expire.
-Do not enable `DesktopMode` in IIS or unattended deployments.
+## IIS Deployment
 
-## Production: one IIS application
+Configure:
 
-The entire application (dashboard and monitoring worker) runs inside IIS. No
-separate Windows Service or manually launched EXE is needed. The old RunWorker
-setting is ignored by this version; remove obsolete overrides in the approved
-deployment configuration. If a service was installed for an older build, arrange
-for its authorized operator to stop and disable it before the transition.
+- AlwaysRunning
+- Application preload
+- Appropriate idle timeout settings
 
-Use a dedicated pool, not a shared pool: No Managed Code, Integrated,
-AlwaysRunning, idle timeout 0, one worker process and Disable Overlapped Recycle
-True. Set Preload Enabled=True for this application and verify IIS Application
-Initialization is available. These are administrator-approved configuration
-changes, not diagnostics. The project publishes in-process ASP.NET Core hosting.
-See [Microsoft IIS hosting guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/?view=aspnetcore-8.0).
+Grant the application identity:
 
-The actual dedicated pool identity needs read/execute access to application files,
-read access to inventory/configuration, Modify access to DataRoot (including
-collector.lock, latest.json, History and temporary files), and approved WMI access.
-Do not grant broad rights, change a shared pool or weaken security. Keep exactly
-one writer; the old manually launched EXE must be stopped during the approved
-transition. Never delete collector.lock while collecting.
+- Read access to inventory files
+- Write access to the configured data directory
 
-When IIS is online, the dashboard now reports sanitized startup/storage/lease
-failures and resource collection failures. A running pool alone does not prove
-successful WMI or storage access. IIS stop/recycle still interrupts collection;
-automatic startup and preload reduce dependence on user requests. One-shot
-collectors use UTF-8 pipes without requiring an attached console.
-
-### Stage and deploy without overwriting running binaries
-
-Both checked-in folder profiles stage locally: FolderProfile1 is framework-dependent
-(`artifacts/iis-publish`), while FolderProfile is self-contained
-(`artifacts/iis-publish-selfcontained`). Destination deletion is disabled in both.
-The project rejects destructive cleanup, direct UNC publishing, and output outside
-the permitted project staging/build directories in the standard folder/CLI paths.
-If Visual Studio remembers an old network destination or deletion option, correct
-the publish profile; do not bypass the guard. Publish output is code only: it does
-not include servers.json or Logs.
-
-From the local development repository, stage a framework-dependent release with:
-
-```powershell
-dotnet publish .\ServerMonitoringWeb.csproj -c Release --self-contained false -o .\artifacts\iis-publish -p:DeleteExistingFiles=false
-```
-
-This command builds/stages only. Do not use a production folder as its output.
-Before any server copy, inspect the staging folder and ensure inventory and Logs
-are absent. The approved administrator must separately confirm the destination's
-original inventory and monitoring data are backed up, present and accessible.
-Never use a mirror/purge copy or delete the entire application directory.
-
-For an approved deployment, back up the application and preserve the deployed inventory
-and monitoring data. The administrator can use the application-specific IIS
-`app_offline.htm` procedure to stop only this application, wait for its processes and
-files to be released, copy the staged application files without deleting inventory or
-logs, and remove the offline file to restart the application. A manually launched EXE
-must be stopped separately by its authorized operator; the offline file cannot stop it.
-If files remain locked, stop deployment and investigate rather than killing shared IIS
-processes or forcing a copy. A partially copied release is not a reliable deployment.
-Build and stage on the development machine; validate that the staging output contains
-neither servers.json nor Logs before the approved deployment. Do not run IISReset or recycle a shared pool.
-See [Microsoft app_offline guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/app-offline?view=aspnetcore-8.0).
-
-If IIS returns HTTP 500.30, check the Windows Application event log and temporarily
-enable ASP.NET Core Module stdout logging in the published `web.config`. Ensure
-its log directory is writable by the application pool identity; disable stdout logging
-after diagnosis. Confirm that the .NET 8 Hosting Bundle/ASP.NET Core Module is installed,
-that the published application matches the configured hosting mode, and that the pool
-identity can read inventory and write monitoring data. A successful standalone launch
-is not proof that IIS can start under its different identity.
-
-After approved deployment, verify that IIS starts the worker and both ping
-and usable metrics timestamps advance without a manually launched EXE. If 500.30
-persists, capture the first startup exception privately.
-
-## Recover missing production inventory or Logs
-
-If the dashboard reports a missing servers.json or UnauthorizedAccessException
-(0x80070005) while initializing DataRoot, stop publishing directly to the server.
-Restore the authorized production inventory from an approved backup (never a sample
-or unverified laptop copy). Restore the existing Logs/History from backup where
-available; do not overwrite newer results or fabricate old history. If no Logs
-backup exists, the administrator may provision a fresh Logs directory after approval;
-old results cannot be recovered by creating it. The dedicated pool needs read
-access to inventory and Modify access only within DataRoot, with inheritance to
-its children. Do not grant write access to the application root or change shared
-pool settings. Verify effective access privately; no permission-changing command
-belongs in the diagnostic checklist. The running worker retries startup every
-15 seconds, so restoring access need not require a server-wide restart.
+Run only one application instance per data root.
 
 ## Data Storage
 
-Deployment output does not contain the private inventory or monitoring Logs. Provide the inventory separately on a new installation.
+Deployment output contains the inventory file.
 
 Preserve:
 
@@ -142,15 +61,8 @@ With `Monitoring:DataRoot` omitted (the repository default), monitoring data is 
 ```
 
 The data directory and `History` are created automatically on startup, along with
-`latest.json` if it does not exist. Grant the worker identity write access to `Logs`
+`latest.json` if it does not exist. Grant the application identity write access to `Logs`
 and preserve it during deployments.
-
-For storage errors, review the operation label and exception type/HRESULT in the
-application log. `Save ping results (storage) failed` is a persistence failure,
-not evidence that the target is offline. The save can involve latest.json or
-outage history. A missing direct pool ACL entry does not prove access is denied.
-Use the [read-only checklist](SERVER-DIAGNOSTIC-TESTS.MD) and have the administrator
-review effective access; do not change or recycle a shared production pool.
 
 To override the data directory, configure an absolute local path:
 
@@ -298,23 +210,6 @@ JSON requires escaped backslashes:
 ```
 
 ---
-
-### WMI access denied
-
-`0x80070005` and `0x80041003` are authorization failures, even when the password is
-correct. The warning identifies local versus remote WMI. For local WMI, check the
-actual IIS application pool/process identity; Windows does not allow alternate
-credentials for local WMI connections. Locality is determined per actual target
-IP, not by the inventory hostname. If `0x80041064` persists, review the sanitized
-locality check and application version with the administrator. For remote WMI, check the configured account
-format and the account's approved DCOM and `root\cimv2` remote WMI permissions with
-the server administrator. Compare under the deployed host identity, not just a
-logged-in administrator session. Do not weaken UAC, DCOM security or firewall policy
-or grant broad administrator privileges to suppress the error. A successful laptop
-connection does not establish that the same target permits WMI from the production
-host. Ask the administrator to compare existing DCOM/WMI security events on source
-and target; do not run additional remote probes on live production without approval. If access still fails,
-provide the sanitized warning and relevant Windows event details.
 
 ## IP Order
 
@@ -624,7 +519,7 @@ Additional notes:
 
 - Metrics failures do not affect connectivity.
 - Metrics failures do not trigger audio.
-- Raw per-card collection warnings remain hidden. Shared notices report worker startup failures, online servers with failed metrics, and potentially stale readings.
+- Collection-warning and stale-metrics notes are hidden.
 - Failures remain available in logs.
 
 ---
@@ -643,7 +538,7 @@ Removed features:
 
 - Bandwidth monitoring
 - Last Checked display
-- Per-card stale metrics indicators (a shared freshness notice is used instead)
+- Stale metrics indicators
 
 ## Disk Display
 
