@@ -129,11 +129,6 @@ public sealed class ServerCollector(
 
                 if (hasMetrics)
                 {
-                    snapshot = snapshot with
-                    {
-                        LastMetricsUtc = DateTimeOffset.UtcNow
-                    };
-
                     break;
                 }
             }
@@ -147,7 +142,7 @@ public sealed class ServerCollector(
                 snapshot = snapshot with
                 {
                     CollectionWarning =
-                        "Collector process: " + CollectionFailure.Describe(
+                        CollectionFailure.Message(
                             ex,
                             server.Password)
                 };

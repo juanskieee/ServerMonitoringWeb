@@ -8,8 +8,7 @@ namespace ServerMonitoringWeb.Pages;
 
 public sealed class IndexModel(
     SnapshotStore snapshots,
-    MonitoringConfiguration configuration,
-    MonitoringWorker worker)
+    MonitoringConfiguration configuration)
     : PageModel
 {
     public MonitoringConfiguration Configuration { get; } = configuration;
@@ -18,13 +17,6 @@ public sealed class IndexModel(
 
     public string? StorageError =>
         snapshots.StorageError;
-
-    public string? FreshnessWarning =>
-        snapshots.FreshnessWarning;
-
-    public string? StartupWarning => worker.StartupWarning;
-
-    public string? MetricsWarning => snapshots.MetricsWarning;
 
     public void OnGet()
     {

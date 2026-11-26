@@ -111,9 +111,15 @@ internal static class CollectorProcess
         var output =
             await outputTask;
 
-        // Drain stderr without exposing raw text. Valid JSON and a successful
-        // exit are sufficient even if a headless child writes diagnostics.
-        await errorTask;
+        var error =
+            await errorTask;
+
+        if (!string.IsNullOrWhiteSpace(error))
+        {
+            // Avoid exposing credentials or raw child-process diagnostics.
+            throw new InvalidOperationException(
+                "Collector process failed. Check the application configuration.");
+        }
 
         return (
             process.ExitCode,

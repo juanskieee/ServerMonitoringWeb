@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Hosting.Server;
 using ServerMonitoringWeb.Models;
 using ServerMonitoringWeb.Services;
 
@@ -14,154 +14,140 @@ if (!OperatingSystem.IsWindows())
 
 // Collector mode is launched by CollectorProcess.
 // It performs one WMI collection and exits.
-if (args.FirstOrDefault() == "--collect-once")
+if (await TryRunCollectorModeAsync(args))
 {
-    return await RunCollectorModeAsync(args);
-}
-
-// Reject an obsolete service launch rather than starting a second web host.
-if (args.FirstOrDefault() == "--worker-service")
-{
-    Console.Error.WriteLine("Separate service mode has been removed. Host this application in IIS.");
-    return 1;
+    return 0;
 }
 
 var builder = WebApplication.CreateBuilder(args);
-var options = BuildMonitoringOptions(builder.Configuration);
-var paths = CreateDataPaths(builder.Configuration, builder.Environment.ContentRootPath);
 
-// One application always owns both the dashboard and monitoring worker.
-RegisterStorage(builder.Services, options, paths);
-RegisterWorker(builder.Services);
+var options = BuildMonitoringOptions(builder);
 
-builder.Services.AddScoped<MonitoringConfiguration>();
-builder.Services.AddScoped<SnapshotStore>();
-builder.Services.AddRazorPages();
+var paths = CreateDataPaths(builder);
+
+RegisterServices(
+    builder.Services,
+    options,
+    paths);
 
 var app = builder.Build();
 
-// Desktop behavior is opt-in and never enabled for non-interactive hosts.
-var desktopMode = app.Configuration.GetValue<bool>("DesktopMode") &&
-                  Environment.UserInteractive &&
-                  app.Services.GetRequiredService<IServer>().GetType().Assembly.GetName().Name == "Microsoft.AspNetCore.Server.Kestrel.Core" &&
-                  string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_PORT"));
-
+DateTime lastHeartbeat = DateTime.UtcNow;
 
 app.Logger.LogInformation(
-    "Host: {ServerType}; Process ID: {ProcessId}; Interactive: {Interactive}; Desktop mode: {DesktopMode}; Monitoring worker: enabled",
-    app.Services.GetRequiredService<IServer>().GetType().Name,
-    Environment.ProcessId,
-    Environment.UserInteractive,
-    desktopMode);
+    "Inventory: {Inventory}",
+    paths.Inventory);
 
-LogPaths(app.Logger, paths);
+app.Logger.LogInformation(
+    "Data Directory: {DataDirectory}",
+    paths.DataDirectory);
+
+app.Logger.LogInformation(
+    "Latest Results: {LatestResults}",
+    paths.LatestResults);
+
+app.Logger.LogInformation(
+    "History Directory: {HistoryDirectory}",
+    paths.HistoryDirectory);
 
 ConfigurePipeline(app);
 
-// IIS and unattended monitoring must not depend on an open browser.
-if (desktopMode)
+// Browser heartbeat endpoint
+app.MapPost("/heartbeat", () =>
 {
-    long lastHeartbeat = Stopwatch.GetTimestamp();
+    lastHeartbeat = DateTime.UtcNow;
+    return Results.Ok();
+});
 
-    app.MapPost("/heartbeat", () =>
-    {
-        Interlocked.Exchange(ref lastHeartbeat, Stopwatch.GetTimestamp());
-        return Results.Ok();
-    });
-
+// Open browser automatically
+if (!app.Environment.IsDevelopment())
+{
     app.Lifetime.ApplicationStarted.Register(() =>
     {
-        Interlocked.Exchange(ref lastHeartbeat, Stopwatch.GetTimestamp());
-        _ = Task.Run(async () =>
+        Task.Run(async () =>
         {
-            var stopping = app.Lifetime.ApplicationStopping;
-
             try
             {
-                await Task.Delay(1500, stopping);
+                await Task.Delay(1500);
 
-                try
+                Process.Start(new ProcessStartInfo
                 {
-                    using var browser = Process.Start(new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        Arguments =
-                            "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    });
-                }
-                catch (Exception ex)
-                {
-                    app.Logger.LogWarning(ex, "Could not open the desktop browser.");
-                }
-
-                while (!stopping.IsCancellationRequested)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(10), stopping);
-
-                    if (Stopwatch.GetElapsedTime(Interlocked.Read(ref lastHeartbeat)) >
-                        TimeSpan.FromSeconds(20))
-                    {
-                        app.Logger.LogInformation("Desktop heartbeat expired; stopping application.");
-                        app.Lifetime.StopApplication();
-                        return;
-                    }
-                }
+                    FileName = "cmd.exe",
+                    Arguments =
+                        "/c start \"LSD Monitoring\" msedge --new-window http://localhost:5000",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
             }
-            catch (OperationCanceledException) when (stopping.IsCancellationRequested)
+            catch
             {
-                // Normal host shutdown.
             }
         });
     });
 }
 
+// Shutdown when browser stops sending heartbeats
+Task task = Task.Run(async () =>
+{
+    while (true)
+    {
+        await Task.Delay(10000);
+
+        if (DateTime.UtcNow - lastHeartbeat >
+            TimeSpan.FromSeconds(20))
+        {
+            Environment.Exit(0);
+        }
+    }
+});
+
 app.Run();
 
 return 0;
 
-static async Task<int> RunCollectorModeAsync(string[] args)
+static async Task<bool> TryRunCollectorModeAsync(
+    string[] args)
 {
-    if (args.Length != 2)
+    if (args.Length != 2 ||
+        args[0] != "--collect-once")
     {
-        return 1;
+        return false;
     }
 
-    // CollectorProcess redirects stdin/stdout as UTF-8 pipes. Do not change
-    // console code pages: a headless IIS or service child has no console.
-    using var input = Console.OpenStandardInput();
-    var server = await JsonSerializer.DeserializeAsync<ServerDefinition>(input);
+    Console.InputEncoding = Encoding.UTF8;
+    Console.OutputEncoding = Encoding.UTF8;
+
+    var input =
+        await Console.In.ReadToEndAsync();
+
+    var server =
+        JsonSerializer.Deserialize<ServerDefinition>(
+            input);
 
     if (server is null)
     {
-        return 1;
+        Environment.ExitCode = 1;
+        return true;
     }
 
-    var metrics = WmiCollector.Collect(server, args[1]);
+    var metrics =
+        WmiCollector.Collect(
+            server,
+            args[1]);
 
-    using var output = Console.OpenStandardOutput();
-    await JsonSerializer.SerializeAsync(output, metrics);
-    await output.FlushAsync();
+    Console.WriteLine(
+        JsonSerializer.Serialize(metrics));
 
-    return 0;
-}
-
-static void LogPaths(ILogger logger, DataPaths paths)
-{
-    logger.LogInformation("Inventory: {Inventory}", paths.Inventory);
-    logger.LogInformation("Data Directory: {DataDirectory}", paths.DataDirectory);
-    logger.LogInformation("Latest Results: {LatestResults}", paths.LatestResults);
-    logger.LogInformation("History Directory: {HistoryDirectory}", paths.HistoryDirectory);
+    return true;
 }
 
 static MonitoringOptions BuildMonitoringOptions(
-    IConfiguration configuration)
+    WebApplicationBuilder builder)
 {
     var options =
         new MonitoringOptions();
 
-    configuration
+    builder.Configuration
         .GetSection("Monitoring")
         .Bind(options);
 
@@ -174,15 +160,14 @@ static MonitoringOptions BuildMonitoringOptions(
 }
 
 static DataPaths CreateDataPaths(
-    IConfiguration configuration,
-    string contentRoot)
+    WebApplicationBuilder builder)
 {
     return new DataPaths(
-        configuration["Monitoring:DataRoot"],
-        contentRoot);
+        builder.Configuration["Monitoring:DataRoot"],
+        builder.Environment.ContentRootPath);
 }
 
-static void RegisterStorage(
+static void RegisterServices(
     IServiceCollection services,
     MonitoringOptions options,
     DataPaths paths)
@@ -191,13 +176,18 @@ static void RegisterStorage(
     services.AddSingleton(options);
 
     services.AddSingleton<ResultStore>();
-}
-
-static void RegisterWorker(IServiceCollection services)
-{
     services.AddSingleton<ServerCollector>();
-    services.AddSingleton<MonitoringWorker>();
-    services.AddHostedService<MonitoringWorker>(provider => provider.GetRequiredService<MonitoringWorker>());
+
+    // Reload inventory data for each request so
+    // servers.json changes appear automatically.
+    services.AddScoped<MonitoringConfiguration>();
+
+    services.AddScoped<SnapshotStore>();
+
+    // Runs the background monitoring loops.
+    services.AddHostedService<MonitoringWorker>();
+
+    services.AddRazorPages();
 }
 
 static void ConfigurePipeline(

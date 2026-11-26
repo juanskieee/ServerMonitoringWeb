@@ -1,10 +1,7 @@
 @page
 @model IndexModel
-@using Microsoft.Extensions.Configuration
-@inject IConfiguration Configuration
 @{
     ViewData["Title"] = "LSD Server Monitoring System";
-    var desktopMode = Configuration.GetValue<bool>("DesktopMode") && Environment.UserInteractive;
 }
 
 <header class="dashboard-header">
@@ -30,8 +27,7 @@
 
 <audio id="server-warning-sound" src="~/audio/server-warning.wav" preload="auto" loop></audio>
 
-<div id="dashboard-content" data-refresh-url="@Url.Page("/Index", "Cards")"
-     data-heartbeat-url="@(desktopMode ? Url.Content("~/heartbeat") : null)">
+<div id="dashboard-content" data-refresh-url="@Url.Page("/Index", "Cards")">
     @await Html.PartialAsync("_ServerCards", Model)
 </div>
 

@@ -1,6 +1,6 @@
 # Project Context
 
-Updated: November 26, 2026 (Asia/Taipei).
+Updated: November 19, 2026 (Asia/Taipei).
 
 See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubleshooting. This document describes the current implementation and serves as the primary technical reference.
 
@@ -8,22 +8,8 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 
 # Application and Inventory
 
-- One Windows .NET 8 application hosts Razor Pages and MonitoringWorker together.
-  The worker is always registered; the old RunWorker setting is no longer used.
-  No separate Windows Service is required. The obsolete --worker-service switch
-  is rejected rather than starting another host. IIS publishing explicitly uses
-  in-process hosting. IIS must start and keep the application alive; recycling
-  or stopping IIS interrupts monitoring.
-- Desktop browser/heartbeat behavior remains explicitly interactive, not IIS
-  hosting. One-shot WMI subprocesses use redirected UTF-8 JSON without changing
-  console code pages; stderr is drained and never exposed. Successful exit and
-  valid JSON determine success.
-- Worker startup yields to the host, acquires the exclusive writer lease and
-  initializes storage. On I/O or access errors it retries every 15 seconds
-  without starting collection, and exposes a sanitized startup notice. A shared
-  resource warning counts online servers whose collection failed and identifies
-  known access-denied codes without raw messages. Monitoring intervals,
-  authorization and the snapshot schema are unchanged.
+- One Windows .NET 8 application hosts both Razor Pages and the monitoring worker.
+  Stopping or recycling the application stops monitoring; closing the browser does not.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.
@@ -39,20 +25,6 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - `Enabled = false` pauses all checks for that server.
 
 - Passwords remain plain text outside `wwwroot`.
-- WMI connects once per collection attempt. The actual selected IP address is
-  compared to loopback and local interface unicast addresses (including IPv4-mapped
-  IPv6 normalization); a local match uses the process identity and no alternate
-  credentials. Otherwise remote WMI uses the existing inventory credentials and
-  packet-privacy authentication. ComputerName is metadata, not a locality override.
-  Interface enumeration is local and sends no network probes. If identification
-  throws, the attempt reports a warning rather than trying explicit credentials.
-  The existing missing-credentials skip rule is unchanged.
-- Connection warnings identify the mode that failed, without disclosing credentials.
-  Correct passwords alone do not establish WMI/DCOM authorization.
-- The deployed inventory is not available in Git. Issue #9 reports metrics
-  missing under IIS; single-host registration, startup diagnostics and headless
-  collection changes require build and approved deployment/runtime validation.
-  Remote WMI/DCOM authorization remains a separate deployment concern.
 
 - Inventory validation checks:
   - IDs
@@ -62,13 +34,7 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   - Unknown JSON properties
   - 1 MiB maximum file size
 
-- The local inventory is copied to build output for development only. Publish output
-  excludes servers.json and monitoring Logs; provision and preserve them separately.
-  Both checked-in folder profiles stage locally and disable destination deletion.
-  Project-level publish guards reject destructive cleanup, UNC paths, destinations
-  outside approved project output directories, and staging containing inventory or
-  Logs. These guards apply to standard VS folder and CLI publish targets; they do
-  not protect manual copies, other deployment tooling, or old builds.
+- Inventory files are copied during build and publish and must be preserved during deployment.
 
 - `Models/Configurations.cs` contains `MonitoringOptions`, `MonitoringConfiguration`, and
   `InventoryConfiguration`. Path resolution is defined in `Services/DataPaths.cs`.
@@ -106,13 +72,7 @@ Default structure:
 - Startup logs report `Inventory`, `Data Directory`, `Latest Results`, and `History Directory` paths.
 - Each completed per-server ping or details result reads and rewrites the complete
   `latest.json` file through a same-directory temporary file and replacement move.
-  A process-local semaphore serializes snapshot/history writes. Every upgraded worker
-  also holds an exclusive collector.lock handle in DataRoot for its lifetime before
-  initialization. Readers do not acquire it. The file remains; the handle establishes ownership.
-- Worker errors identify the failing stage (ping collection, metrics collection,
-  storage read, save ping results or save metrics results) and exception type/HRESULT.
-  Storage failures are not labeled as failed network pings. Storage behavior and
-  the existing connectivity/outage rules remain unchanged.
+  A process-local semaphore serializes snapshot/history writes.
 - `History/yyyy-MM-dd.metrics.csv` contains outage transitions only, with columns
   `Timestamp,ServerId,ServerName,Event`. A known Online to Error ping transition
   writes `Offline`; Error to Online writes `Recovered`. Timestamp and filename
@@ -160,23 +120,19 @@ Default structure:
   have no application-level kill-on-parent-exit ownership or independent watchdog.
 - WMI authentication failures have no backoff or stop condition; alternate-IP retries
   can lock accounts and amplify authentication/security logging.
-- The dashboard displays a shared freshness notice when saved ping observations or
-  usable resource metrics are overdue. Thresholds allow for configured timer intervals,
-  concurrency, target count, address count and timeouts, with a 60-second minimum.
-  Metrics now record LastMetricsUtc when usable readings return; old snapshots without
-  that field are treated as unverified until refreshed. Stored connectivity status,
-  audio and outage history are not changed by the notice. A fresh HTTP response alone
-  does not establish collection health.
+- Stored ping status has no freshness requirement, metrics have no collection
+  timestamp, and HTTP refresh success does not establish collection health. A valid
+  old results file can continue showing Online after persistence fails.
 - Removed server IDs are not pruned from `latest.json`; malformed results block
   subsequent updates until operator repair. CSV date retention has no byte quota
   and depends on completed ping cycles, valid inventory, and successful file deletion.
-- The writer lease excludes concurrent upgraded workers sharing the same local
-  data directory. Old binaries and external writers do not honor it and must be
-  excluded operationally. The IIS dashboard and worker share the same data root.
+- One application instance per data root is required operationally but not enforced.
+  The process-local lock and shared temporary filename do not protect concurrent
+  instances, including overlapping host lifetimes during deployment/recycling.
 - Dashboard access has no application-enforced authentication requirement. Production
   access control, HTTPS, private data paths, and inventory/deployment/backup ACLs must
   be supplied by the deployment. Plaintext inventory credentials are copied to
-  local build output.
+  build/publish output.
 - No ordinary unbounded task/listener/handle retention pattern was found, but 24/7
   resource use and target-provider impact remain unmeasured. The audit rates the
   supplied implementation 6/10 and does not approve unattended production operation.
@@ -222,7 +178,7 @@ Default structure:
 
 ## Notices
 
-- Configuration, storage, worker startup, metrics and freshness notices are limited to 25% of the available content height.
+- Configuration and storage notices are limited to 25% of the available content height.
 - Notice areas scroll independently.
 - Server cards and page height remain fixed.
 
