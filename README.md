@@ -9,7 +9,7 @@ A Windows-based ASP.NET Core Razor Pages application for monitoring server reach
 - Independent background ping and metrics cycles.
 - Dashboard with light/dark themes, automatic refresh, and connectivity warning audio.
 - Latest results in JSON and outage/recovery history in daily CSV files.
-- Independent Windows Service monitoring, IIS dashboard-only hosting, and combined development/desktop mode.
+- One IIS-hosted application with background monitoring, plus optional local development/desktop mode.
 
 ## Requirements
 
@@ -29,11 +29,11 @@ dotnet build .\ServerMonitoringWeb.sln
 dotnet run --project .\ServerMonitoringWeb.csproj --no-build --launch-profile http
 ```
 
-Open the address reported by the application. Closing the browser does not stop monitoring in combined mode, but stopping the host does. Production can use the independent Windows Service.
+Open the address reported by the application. Closing the browser does not stop normal monitoring, but stopping the host does.
 
 ## Deployment and data
 
-Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Use the [administrator-approved Windows Service migration](Documentation/OPERATIONS.MD#production-windows-service--iis-dashboard): the service collects independently, and IIS uses Monitoring:RunWorker=false. Keep service binaries separate from the IIS deployment. Do not run a second collector against the same data directory. Service installation is not automatic.
+Publish the application in Release mode to the local IIS staging profile (`artifacts/iis-publish`), then use the administrator-approved deployment procedure in Operations. The staged output excludes the private inventory and monitoring Logs. Configure a dedicated IIS pool with automatic startup and preload as described in [Operations](Documentation/OPERATIONS.MD#production-one-iis-application). The dashboard and worker run together, without installing a separate Windows Service or launching the EXE manually. Only one collector may use the data directory.
 
 Preserve the deployed `servers.json` and existing `Logs` directory. The default data directory is `Logs` beside the application; `Monitoring:DataRoot` can override it with an absolute local path.
 
@@ -44,7 +44,7 @@ Preserve the deployed `servers.json` and existing `Logs` directory. The default 
 | `Logs/latest.json` | Latest monitoring snapshots and recent ping entries |
 | `Logs/History/` | Daily outage/recovery CSV files |
 
-Grant the worker identity read access to the inventory and Modify access to the data directory only. Dashboard-only IIS requires read access. The repository does not contain the deployed inventory. Keep it outside the publicly served `wwwroot` directory and protect it with appropriate filesystem ACLs.
+Grant the worker identity read access to the inventory and Modify access to the data directory only. IIS runs the worker under the dedicated pool identity. The repository does not contain the deployed inventory. Keep it outside the publicly served `wwwroot` directory and protect it with appropriate filesystem ACLs.
 
 ## Troubleshooting
 

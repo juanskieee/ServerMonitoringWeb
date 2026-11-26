@@ -16,9 +16,9 @@ dotnet build .\ServerMonitoringWeb.sln --nologo -m:1 -p:UseSharedCompilation=fal
 dotnet run --project .\ServerMonitoringWeb.csproj --no-build --launch-profile http
 ```
 
-Combined mode runs Razor Pages and the monitoring worker together. Stopping the
-host stops collection. This remains the default for compatibility and development,
-but is not the recommended production topology.
+The application runs Razor Pages and the monitoring worker together. Stopping
+the host stops collection; closing the browser does not stop normal monitoring.
+Production hosts the entire application in IIS.
 
 For the optional interactive desktop EXE behavior only, launch from an interactive Windows session:
 
@@ -29,58 +29,33 @@ For the optional interactive desktop EXE behavior only, launch from an interacti
 This opens Edge and stops the host gracefully after browser heartbeats expire.
 Do not enable `DesktopMode` in IIS or unattended deployments.
 
-## Production: Windows Service + IIS dashboard
+## Production: one IIS application
 
-The collector runs as an independent Windows Service named
-`ServerMonitoringWorker`. IIS serves the dashboard and reads saved results.
-The same .NET 8 build supplies both roles. No service is installed automatically.
+The entire application (dashboard and monitoring worker) runs inside IIS. No
+separate Windows Service or manually launched EXE is needed. The old RunWorker
+setting is ignored by this version; remove obsolete overrides in the approved
+deployment configuration. If a service was installed for an older build, arrange
+for its authorized operator to stop and disable it before the transition.
 
-### Administrator-approved transition
+Use a dedicated pool, not a shared pool: No Managed Code, Integrated,
+AlwaysRunning, idle timeout 0, one worker process and Disable Overlapped Recycle
+True. Set Preload Enabled=True for this application and verify IIS Application
+Initialization is available. These are administrator-approved configuration
+changes, not diagnostics. The project publishes in-process ASP.NET Core hosting.
+See [Microsoft IIS hosting guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/iis/?view=aspnetcore-8.0).
 
-Use a maintenance window and documented rollback. These are deployment steps,
-not production diagnostic tests. Do not reconfigure or recycle a shared IIS pool.
+The actual dedicated pool identity needs read/execute access to application files,
+read access to inventory/configuration, Modify access to DataRoot (including
+collector.lock, latest.json, History and temporary files), and approved WMI access.
+Do not grant broad rights, change a shared pool or weaken security. Keep exactly
+one writer; the old manually launched EXE must be stopped during the approved
+transition. Never delete collector.lock while collecting.
 
-1. Build and stage the release on the development machine. Keep web and service
-   binaries in separate protected local installation directories; preserve the
-   single existing inventory and results directory.
-2. Back up the deployment and configuration. Have the authorized operator stop
-   the manually launched EXE and take only the old monitoring web application
-   offline. Older binaries do not honor the writer lease.
-3. Deploy the updated dashboard. In its deployed appsettings.json, set
-   `Monitoring:RunWorker` to `false` (or use an app-specific IIS environment
-   override). Preserve other settings. Do not disable collection before the
-   replacement service is ready.
-4. Install the staged multi-file EXE as Windows Service `ServerMonitoringWorker`
-   under an approved least-privilege service account and configure automatic
-   startup. The service image path must include the absolute local IIS content root.
-   Illustrative service image path (not a command to execute):
-
-   ```text
-   "C:\Services\ServerMonitoringWorker\ServerMonitoringWeb.exe" --worker-service "C:\inetpub\wwwroot\ServerMonitoringWeb"
-   ```
-
-   Adjust paths to the actual approved installation. Keep the EXE, DLL and
-   dependent files together; verify the .NET 8 runtime. Do not select an elevated
-   account to bypass WMI permissions. See [Microsoft Windows Service hosting](https://learn.microsoft.com/en-us/dotnet/core/extensions/windows-service?pivots=dotnet-8-0).
-5. Service account: read configuration/inventory, Modify access to DataRoot,
-   and approved WMI authorization. Dashboard-only IIS: read inventory/results.
-   Both roles must resolve the same DataRoot; avoid conflicting environment
-   overrides. Configure Event Log source access and service recovery under
-   administrator policy. Service mode ignores RunWorker and always collects.
-6. Start the service and restore the dashboard through the approved procedure.
-   Verify exactly one writer, service running, dashboard logs show
-   `Monitoring worker: False`, and ping and usable metrics timestamps advance
-   without an interactive EXE or browser. If validation fails, stop the new
-   service before restoring the previous application/configuration.
-
-The one-shot collector uses UTF-8 redirected pipes without changing console code
-pages, so it does not require an attached console even in combined IIS mode.
-
-The exclusive collector.lock handle prevents concurrent upgraded workers using
-the same local DataRoot; never delete it while collecting. It does not coordinate
-older builds or external writers. Use a dedicated IIS pool where the hosting
-model requires one; the independent service does not need IIS AlwaysRunning or
-idle-timeout changes for collection.
+When IIS is online, the dashboard now reports sanitized startup/storage/lease
+failures and resource collection failures. A running pool alone does not prove
+successful WMI or storage access. IIS stop/recycle still interrupts collection;
+automatic startup and preload reduce dependence on user requests. One-shot
+collectors use UTF-8 pipes without requiring an attached console.
 
 ### Stage and deploy without overwriting running binaries
 
@@ -90,9 +65,8 @@ profile alone does not deploy anything. Use a clean local staging directory; the
 existing files. Verify the destination is local before publishing. The build excludes
 monitoring Logs from output and publish excludes servers.json.
 
-For an approved dashboard deployment, back up the application and preserve the deployed inventory
-and monitoring data. Updates to the separate service binaries require stopping only the dedicated
-monitoring service through the approved maintenance procedure. The administrator can use the application-specific IIS
+For an approved deployment, back up the application and preserve the deployed inventory
+and monitoring data. The administrator can use the application-specific IIS
 `app_offline.htm` procedure to stop only this application, wait for its processes and
 files to be released, copy the staged application files without deleting inventory or
 logs, and remove the offline file to restart the application. A manually launched EXE
@@ -108,12 +82,12 @@ enable ASP.NET Core Module stdout logging in the published `web.config`. Ensure
 its log directory is writable by the application pool identity; disable stdout logging
 after diagnosis. Confirm that the .NET 8 Hosting Bundle/ASP.NET Core Module is installed,
 that the published application matches the configured hosting mode, and that the pool
-identity can read inventory and monitoring data (write access is only required for a combined worker). A successful standalone launch
+identity can read inventory and write monitoring data. A successful standalone launch
 is not proof that IIS can start under its different identity.
 
-After the approved migration, verify that service collection continues without a manual EXE
-or browser. IIS availability is a separate check. If 500.30 persists, capture the first
-startup exception privately.
+After approved deployment, verify that IIS starts the worker and both ping
+and usable metrics timestamps advance without a manually launched EXE. If 500.30
+persists, capture the first startup exception privately.
 
 ## Data Storage
 
@@ -620,7 +594,7 @@ Additional notes:
 
 - Metrics failures do not affect connectivity.
 - Metrics failures do not trigger audio.
-- Per-card collection warnings remain hidden. A shared notice warns when saved ping or resource data may be stale.
+- Raw per-card collection warnings remain hidden. Shared notices report worker startup failures, online servers with failed metrics, and potentially stale readings.
 - Failures remain available in logs.
 
 ---

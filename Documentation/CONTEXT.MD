@@ -8,25 +8,22 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
 
 # Application and Inventory
 
-- The same Windows .NET 8 build supports combined dashboard/worker mode (default
-  for backward compatibility), dashboard-only mode (`Monitoring:RunWorker=false`),
-  and worker-only Windows Service mode (`--worker-service <content-root>`).
-  Service mode requires the Windows Service Control Manager, starts no HTTP server
-  or browser, and always enables MonitoringWorker under the configured service account.
-- Production should use IIS in dashboard-only mode and a separately installed,
-  automatically started Windows service named ServerMonitoringWorker. The service
-  binaries can live in a separate protected directory; the explicit local content
-  root points at the IIS application's configuration and inventory. Both hosts
-  must resolve the same DataRoot. Recycling IIS or closing a browser/terminal
-  does not stop the service. Installation/configuration require administrator approval.
-- Combined mode preserves development and legacy deployments until the approved
-  transition. Browser launch and heartbeat-driven graceful shutdown remain explicit
-  interactive desktop-only options. Startup logs distinguish the host and worker
-  registration; service logs use Windows Event Log. IIS publishing stages locally.
-- One-shot WMI subprocesses exchange UTF-8 JSON through redirected standard streams
-  directly, without setting Windows console code pages. This supports detached
-  child processes and keeps credentials off the command line. Invalid/null input
-  returns a nonzero exit code before any collection.
+- One Windows .NET 8 application hosts Razor Pages and MonitoringWorker together.
+  The worker is always registered; the old RunWorker setting is no longer used.
+  No separate Windows Service is required. The obsolete --worker-service switch
+  is rejected rather than starting another host. IIS publishing explicitly uses
+  in-process hosting. IIS must start and keep the application alive; recycling
+  or stopping IIS interrupts monitoring.
+- Desktop browser/heartbeat behavior remains explicitly interactive, not IIS
+  hosting. One-shot WMI subprocesses use redirected UTF-8 JSON without changing
+  console code pages; stderr is drained and never exposed. Successful exit and
+  valid JSON determine success.
+- Worker startup yields to the host, acquires the exclusive writer lease and
+  initializes storage. On I/O or access errors it retries every 15 seconds
+  without starting collection, and exposes a sanitized startup notice. A shared
+  resource warning counts online servers whose collection failed and identifies
+  known access-denied codes without raw messages. Monitoring intervals,
+  authorization and the snapshot schema are unchanged.
 
 - `servers.json` in the content root is the only inventory source.
   The worker loads it every collection cycle and the dashboard loads it every request.
@@ -52,10 +49,10 @@ See `AGENTS.md` for development rules and `OPERATIONS.MD` for setup and troubles
   The existing missing-credentials skip rule is unchanged.
 - Connection warnings identify the mode that failed, without disclosing credentials.
   Correct passwords alone do not establish WMI/DCOM authorization.
-- The deployed inventory is not available in Git. Issue #9 reported frozen readings
-  when the standalone EXE closes; service mode addresses that lifecycle dependency.
-  The source change still requires a .NET build and approved Windows service/IIS
-  validation. Remote WMI authorization remains a separate unresolved concern.
+- The deployed inventory is not available in Git. Issue #9 reports metrics
+  missing under IIS; single-host registration, startup diagnostics and headless
+  collection changes require build and approved deployment/runtime validation.
+  Remote WMI/DCOM authorization remains a separate deployment concern.
 
 - Inventory validation checks:
   - IDs
@@ -169,7 +166,7 @@ Default structure:
   and depends on completed ping cycles, valid inventory, and successful file deletion.
 - The writer lease excludes concurrent upgraded workers sharing the same local
   data directory. Old binaries and external writers do not honor it and must be
-  excluded operationally. Dashboard-only hosts may read concurrently.
+  excluded operationally. The IIS dashboard and worker share the same data root.
 - Dashboard access has no application-enforced authentication requirement. Production
   access control, HTTPS, private data paths, and inventory/deployment/backup ACLs must
   be supplied by the deployment. Plaintext inventory credentials are copied to
@@ -219,7 +216,7 @@ Default structure:
 
 ## Notices
 
-- Configuration, storage and freshness notices are limited to 25% of the available content height.
+- Configuration, storage, worker startup, metrics and freshness notices are limited to 25% of the available content height.
 - Notice areas scroll independently.
 - Server cards and page height remain fixed.
 

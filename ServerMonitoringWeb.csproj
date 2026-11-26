@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
+		<AspNetCoreHostingModel>InProcess</AspNetCoreHostingModel>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<DefaultItemExcludes>$(DefaultItemExcludes);Legacy/**;artifacts/**;Logs/**;logs/**</DefaultItemExcludes>
@@ -10,7 +11,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="System.Management" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
 		<Content Update="servers.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
 	</ItemGroup>
 

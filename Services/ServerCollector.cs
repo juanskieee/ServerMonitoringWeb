@@ -147,7 +147,7 @@ public sealed class ServerCollector(
                 snapshot = snapshot with
                 {
                     CollectionWarning =
-                        CollectionFailure.Message(
+                        "Collector process: " + CollectionFailure.Describe(
                             ex,
                             server.Password)
                 };

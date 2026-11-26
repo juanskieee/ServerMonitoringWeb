@@ -15,6 +15,20 @@
             </section>
         }
 
+        @if (Model.StartupWarning is { } startupWarning)
+        {
+            <section class="notice notice-error" aria-label="Monitoring worker startup">
+                <p>@startupWarning</p>
+            </section>
+        }
+
+        @if (Model.MetricsWarning is { } metricsWarning)
+        {
+            <section class="notice" aria-label="Resource collection unavailable">
+                <p>@metricsWarning</p>
+            </section>
+        }
+
         @if (Model.FreshnessWarning is { } freshnessWarning)
         {
             <section class="notice" aria-label="Monitoring data freshness">
