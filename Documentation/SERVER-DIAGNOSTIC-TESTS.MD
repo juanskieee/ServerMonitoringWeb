@@ -6,7 +6,7 @@ Follow-up to issues #3, #5 and #7. These checks are intended for an authorized o
 
 ## 1. Hosting context — already collected
 
-The hosting context was reported in issue #5. No need to repeat the broad IIS inventory commands. The monitoring application shares an IIS pool with other applications; do not restart, recycle or reconfigure it.
+The hosting context was reported in issue #5. No need to repeat the broad IIS inventory commands. The monitoring application originally shared an IIS pool. The dedicated pool has since been reported configured; do not restart, recycle or reconfigure shared pools.
 
 The terminal identity and the IIS application identity are not necessarily the same. A running pool alone does not prove the monitoring application started successfully.
 
@@ -23,7 +23,7 @@ foreach ($path in @($data, (Join-Path $data 'latest.json'), (Join-Path $data 'Hi
         Get-Item -LiteralPath $path |
             Select-Object Name, Attributes, LastWriteTime
         (Get-Acl -LiteralPath $path).Access |
-            Where-Object { $_.IdentityReference.Value -eq 'IIS AppPool\DefaultAppPool' } |
+            Where-Object { $_.IdentityReference.Value -eq 'IIS AppPool\ServerMonitoringWebPool' } |
             Select-Object FileSystemRights, AccessControlType, IsInherited
     } else {
         Write-Output ('Missing: ' + (Split-Path $path -Leaf))
@@ -109,30 +109,22 @@ alongside the IIS host. Check the existing logs for the new Host startup message
 the dashboard's freshness notice after approved deployment. The notice detects potentially
 old readings, not their root cause.
 
-## 7. Independent monitoring service (after approved installation only)
+## 7. Single IIS application (after approved deployment)
 
-These checks do not install, start, stop or configure a service. Do not launch
-the service EXE manually.
-
-```powershell
-Get-Service -Name ServerMonitoringWorker -ErrorAction SilentlyContinue |
-    Select-Object Status, StartType
-```
-
-Inspect existing authorized logs privately: service startup should be present,
-and the dashboard startup should show Monitoring worker: False. Observe the
-existing snapshot timestamps over multiple collection cycles. A changing file
-timestamp alone may reflect pings; verify LastMetricsUtc advances for servers
-with authorized metrics as well. Do not close or restart production applications,
-run remote WMI tests or change permissions for this checklist.
+The IIS application always starts its monitoring worker. No additional service
+is needed. Inspect the dashboard's startup and resource collection notices, and
+compare existing LastPingUtc and LastMetricsUtc over multiple collection cycles.
+The latest.json file timestamp alone can advance from ping without working WMI.
+If startup reports access denied or an exclusive lease error, ask the administrator
+to verify effective access for the dedicated pool and that no previous collector
+is running. Do not delete collector.lock, change permissions or launch another EXE.
 
 ## 8. Headless subprocess smoke test — development laptop only
 
 Do not execute this on production. Build the solution on a development Windows
 machine, then run from the repository root. The subprocess receives null JSON
 and exits before WMI, inventory access, or either monitoring loop; it exercises
-the redirected input path without an attached console. It does not test service
-installation or actual metrics collection.
+the redirected input path without an attached console. It does not test IIS hosting or actual metrics collection.
 
 ```powershell
 dotnet build .\ServerMonitoringWeb.sln
@@ -179,8 +171,7 @@ Do not upload terminal screenshots, complete logs, IIS inventories, hostnames, a
 - [ ] srv05 LocalIPMatches: True / False / unknown.
 - [ ] Existing dashboard available: yes / no / unknown.
 - [ ] Existing error codes only, without sensitive details.
-- [ ] Windows service running: yes / no / unknown.
-- [ ] Dashboard worker disabled: yes / no / unknown.
+- [ ] IIS worker startup notice: none / sanitized stage and error code.
 - [ ] Ping and authorized metrics timestamps advance without a manual EXE: yes / no / unknown.
 
 These commands were source-reviewed, not executed by the developer assistant on the production server. Even read-only inspection must comply with local access and change-management policies.
