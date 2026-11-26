@@ -18,6 +18,12 @@
 		<Folder Include="Logs\" />
 	</ItemGroup>
 
+	<PropertyGroup>
+		<_LocalArtifactsRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'artifacts'))</_LocalArtifactsRoot>
+		<_LocalBinRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'bin'))</_LocalBinRoot>
+		<_LocalObjRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'obj'))</_LocalObjRoot>
+	</PropertyGroup>
+
 	<!-- Protect server-owned inventory/history from IDE profile overrides.
 	     VS folder publish and CLI publish use different copy/cleanup targets. -->
 	<Target Name="ValidateSafeFolderPublish"
@@ -31,10 +37,12 @@
 		</PropertyGroup>
 		<Error Condition="$([System.String]::Copy('$(_SafeFolderDestination)').StartsWith('\\'))"
 		       Text="Unsafe publish: publishing directly to a network share is blocked. Use the local FolderProfile1 staging directory." />
-		<Error Condition="!$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'artifacts').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'bin').ToUpperInvariant())'))"
+		<Error Condition="!$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$(_LocalArtifactsRoot.ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeFolderDestination)').ToUpperInvariant().StartsWith('$(_LocalBinRoot.ToUpperInvariant())'))"
 		       Text="Unsafe publish: destination must be inside this project's local artifacts or bin directory. Do not publish over a deployed site." />
 		<Error Condition="Exists('$(_SafeFolderDestination)servers.json') Or Exists('$(_SafeFolderDestination)Logs')"
 		       Text="Unsafe publish: destination contains an inventory or Logs. Use a different clean local staging directory; do not delete those files." />
+		<Error Condition="'$(PublishIntermediateOutputPath)' != '' And (Exists('$(PublishIntermediateOutputPath)servers.json') Or Exists('$(PublishIntermediateOutputPath)Logs'))"
+		       Text="Unsafe publish: old intermediate output contains private inventory or Logs. Back it up if needed and use a clean local build before publishing." />
 	</Target>
 
 	<Target Name="ValidateSafeCliPublish"
@@ -48,7 +56,7 @@
 		</PropertyGroup>
 		<Error Condition="$([System.String]::Copy('$(_SafeCliDestination)').StartsWith('\\'))"
 		       Text="Unsafe publish: publishing directly to a network share is blocked." />
-		<Error Condition="!$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'artifacts').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'bin').ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', 'obj').ToUpperInvariant())'))"
+		<Error Condition="!$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$(_LocalArtifactsRoot.ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$(_LocalBinRoot.ToUpperInvariant())')) And !$([System.String]::Copy('$(_SafeCliDestination)').ToUpperInvariant().StartsWith('$(_LocalObjRoot.ToUpperInvariant())'))"
 		       Text="Unsafe publish: destination must be inside this project's local artifacts, bin or obj directory." />
 		<Error Condition="Exists('$(_SafeCliDestination)servers.json') Or Exists('$(_SafeCliDestination)Logs')"
 		       Text="Unsafe publish: destination contains an inventory or Logs. Select clean local staging instead." />
